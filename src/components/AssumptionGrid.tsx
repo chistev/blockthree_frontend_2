@@ -1,19 +1,41 @@
-
-import React from 'react'
+import React, { useState } from 'react'
 import { classNames } from '../utils'
 
 export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
   if (!assumptions) return null;
-  const keys = groupFields || Object.keys(assumptions || {}).filter(k => ['number','string','boolean'].includes(typeof assumptions[k]));
-  const onChange = (k: string, v: any) => setAssumptions({ ...assumptions, [k]: v });
+  const keys = groupFields || Object.keys(assumptions || {}).filter(k => ['number', 'string', 'boolean'].includes(typeof assumptions[k]));
 
   const Field = ({ k }: { k: string }) => {
+    const [inputValue, setInputValue] = useState(assumptions[k] ?? '');
+    
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInputValue(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
+    };
+
+    const handleCommit = () => {
+      const value = typeof assumptions[k] === 'number' ? Number(inputValue) : inputValue;
+      setAssumptions({ ...assumptions, [k]: value });
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        handleCommit();
+      }
+    };
+
     const val = assumptions[k];
     if (typeof val === 'number') {
       return (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <div className="text-[14px] text-gray-600 dark:text-gray-300">{k}</div>
-          <input type="number" value={val} onChange={(e) => onChange(k, Number(e.target.value))} className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800" />
+          <input
+            type="number"
+            value={inputValue}
+            onChange={handleChange}
+            onBlur={handleCommit}
+            onKeyDown={handleKeyDown}
+            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+          />
         </label>
       );
     }
@@ -21,14 +43,27 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
       return (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <div className="text-[14px] text-gray-600 dark:text-gray-300">{k}</div>
-          <input type="checkbox" checked={!!val} onChange={(e) => onChange(k, e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={!!inputValue}
+            onChange={handleChange}
+            onBlur={handleCommit}
+            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+          />
         </label>
       );
     }
     return (
       <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
         <div className="text-[14px] text-gray-600 dark:text-gray-300">{k}</div>
-        <input type="text" value={val ?? ''} onChange={(e) => onChange(k, e.target.value)} className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800" />
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleChange}
+          onBlur={handleCommit}
+          onKeyDown={handleKeyDown}
+          className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+        />
       </label>
     );
   };
