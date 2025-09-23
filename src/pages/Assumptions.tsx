@@ -1,8 +1,6 @@
-
 import React from 'react'
 import { Card, SectionTitle, Pill, Button } from '../components/Primitives'
 import AssumptionGrid from '../components/AssumptionGrid'
-
 export default function Assumptions({
   assumptions, setAssumptions, mode, setMode, ticker, setTicker, handleUpload, advancedOpen, setAdvancedOpen,
   handleCalculate, snapshotId, isLoading, progress, error
@@ -17,8 +15,7 @@ export default function Assumptions({
     { title: 'Hedging', fields: ['hedge_policy', 'hedge_intensity', 'hedge_tenor_days', 'deribit_iv_source', 'manual_iv'] },
     { title: 'Optimizer Constraints', fields: ['objective_preset', 'cvar_on', 'max_dilution', 'min_runway_months', 'max_breach_prob'] },
   ];
-  const advancedGroup = { title: 'Advanced Parameters', fields: ['dilution_vol_estimate', 'vol_mean_reversion_speed', 'long_run_volatility', 'paths', 'min_profit_margin', 'use_variance_reduction', 'bootstrap_samples'] };
-
+  const advancedGroup = { title: 'Advanced Parameters', fields: ['dilution_vol_estimate', 'vol_mean_reversion_speed', 'long_run_volatility', 'min_profit_margin', 'use_variance_reduction'] };
   return (
     <div className="space-y-6">
       <SectionTitle right={<Pill tone={mode === 'public' ? 'blue' : mode === 'private' ? 'gray' : 'violet'}>Mode: {mode}</Pill>}>Assumptions</SectionTitle>
@@ -36,18 +33,18 @@ export default function Assumptions({
         </Card>
       ))}
       <Card>
-  <div 
-    className="cursor-pointer" 
+  <div
+    className="cursor-pointer"
     onClick={() => setAdvancedOpen(!advancedOpen)}
   >
     <SectionTitle>{advancedOpen ? 'Hide' : 'Show'} Advanced Parameters</SectionTitle>
   </div>
   {advancedOpen && (
     <div onClick={(e) => e.stopPropagation()}>
-      <AssumptionGrid 
-        assumptions={assumptions} 
-        setAssumptions={setAssumptions} 
-        groupFields={advancedGroup.fields} 
+      <AssumptionGrid
+        assumptions={assumptions}
+        setAssumptions={setAssumptions}
+        groupFields={advancedGroup.fields}
       />
     </div>
   )}
