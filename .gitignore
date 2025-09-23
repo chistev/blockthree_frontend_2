@@ -1,0 +1,32 @@
+# Node.js dependencies
+node_modules/
+
+# MacOS system files
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+/dist
+/build
+
+# Package manager files
+package-lock.json
+package.json
+
+# IDE/editor config files
+.vscode/
+.idea/
+
+# TypeScript
+tsconfig.json
+
+# Tailwind CSS config
+tailwind.config.cjs
+postcss.config.cjs
+
+# Vite config
+vite.config.ts
