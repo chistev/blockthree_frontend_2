@@ -35,10 +35,23 @@ export default function Assumptions({
           <AssumptionGrid assumptions={assumptions} setAssumptions={setAssumptions} groupFields={g.fields} />
         </Card>
       ))}
-      <Card className="cursor-pointer" onClick={() => setAdvancedOpen(!advancedOpen)}>
-        <SectionTitle>{advancedOpen ? 'Hide' : 'Show'} Advanced Parameters</SectionTitle>
-        {advancedOpen && <AssumptionGrid assumptions={assumptions} setAssumptions={setAssumptions} groupFields={advancedGroup.fields} />}
-      </Card>
+      <Card>
+  <div 
+    className="cursor-pointer" 
+    onClick={() => setAdvancedOpen(!advancedOpen)}
+  >
+    <SectionTitle>{advancedOpen ? 'Hide' : 'Show'} Advanced Parameters</SectionTitle>
+  </div>
+  {advancedOpen && (
+    <div onClick={(e) => e.stopPropagation()}>
+      <AssumptionGrid 
+        assumptions={assumptions} 
+        setAssumptions={setAssumptions} 
+        groupFields={advancedGroup.fields} 
+      />
+    </div>
+  )}
+</Card>
       <Button onClick={handleCalculate} disabled={isLoading} variant="primary">{isLoading ? `Running... ${progress}%` : 'Run Models'}</Button>
       {snapshotId && <Pill tone="green">Snapshot: {snapshotId}</Pill>}
       {error && <p className="text-red-500 text-[14px]">{error}</p>}
