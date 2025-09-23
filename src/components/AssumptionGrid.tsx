@@ -7,7 +7,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
 
   const Field = ({ k }: { k: string }) => {
     const [inputValue, setInputValue] = useState(assumptions[k] ?? '');
-    
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       setInputValue(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
     };
@@ -24,6 +24,22 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     };
 
     const val = assumptions[k];
+
+    // Check if the field is BTC_current_market_price to make it read-only
+    if (k === 'BTC_current_market_price') {
+      return (
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+          <div className="text-[14px] text-gray-600 dark:text-gray-300">{k}</div>
+          <input
+            type="number"
+            value={inputValue}
+            readOnly
+            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-gray-100 dark:bg-zinc-900 cursor-not-allowed"
+          />
+        </label>
+      );
+    }
+
     if (typeof val === 'number') {
       return (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
@@ -39,6 +55,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
+
     if (typeof val === 'boolean') {
       return (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
@@ -53,6 +70,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
+
     return (
       <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
         <div className="text-[14px] text-gray-600 dark:text-gray-300">{k}</div>
