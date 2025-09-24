@@ -106,7 +106,7 @@ export default function App() {
 
   const fetchAudit = async () => {
     try {
-      const res = await fetch(API('/get_audit_trail/'));
+      const res = await fetch(API('/api/get_audit_trail/'));
       if (!res.ok) throw new Error('Audit fetch failed');
       const data = await res.json();
       setAuditTrail(data.audit_trail || []);
