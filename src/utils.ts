@@ -1,4 +1,3 @@
-
 export const API = (path: string) => `http://127.0.0.1:8000${path}`;
 
 export const classNames = (...xs: (string | boolean | undefined)[]) =>
@@ -8,9 +7,18 @@ export const classNames = (...xs: (string | boolean | undefined)[]) =>
 export const pct = (x: number | undefined | null, d = 2) => (x === 0 || !!x) ? `${(Number(x) * 100).toFixed(d)}%` : '—';
 export const num = (x: number | undefined | null) => (x === 0 || !!x) ? new Intl.NumberFormat().format(Number(x)) : '—';
 export const months = (x: number | undefined | null) => (x === 0 || !!x) ? `${Number(x).toFixed(1)} mo` : '—';
-export const formatMoney = (x: number | undefined | null, fd = 0) => (x === 0 || !!x)
-  ? new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: fd }).format(Number(x))
-  : '—';
+export const formatMoney = (x: number | undefined | null, fd = 0) => {
+  if (x === undefined || x === null) return '—';
+  
+  // Ensure fd is a valid integer between 0 and 20
+  const fractionDigits = Math.max(0, Math.min(20, Math.floor(Number(fd) || 0)));
+  
+  return new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: fractionDigits,
+  }).format(Number(x));
+};
 
 // Risk thresholds
 export const RISK = { ltv: { green: 0.05, amber: 0.10 }, dil: { green: 0.08, amber: 0.12 } };
