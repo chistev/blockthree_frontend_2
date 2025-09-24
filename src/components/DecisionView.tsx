@@ -296,7 +296,7 @@ function DecisionView({
             <BarChart
               data={Object.entries(results?.metrics?.scenario_metrics || results?.scenario_metrics || {}).map(([k, v]: [string, any]) => ({
                 name: k,
-                delta: (v as any).nav || 0,
+                delta: (v as any).nav_impact || 0,
               }))}
             >
               <CartesianGrid strokeDasharray="3 3" />
