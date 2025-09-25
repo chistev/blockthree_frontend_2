@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, SectionTitle, Pill, Button } from './Primitives';
 import { ToastContainer, toast } from 'react-toastify';
 
@@ -86,12 +86,18 @@ export default function WhatIfDrawer({ assumptions, snapshotId, onRun, setIsOpen
 }
 
 function BespokePanel({ assumptions, snapshotId, onRun }: any) {
-  const [param, setParam] = useState(Object.keys(assumptions).find((k) => ALLOWED_PARAMETERS.includes(k) && typeof assumptions[k] === 'number') || '');
+  const [param, setParam] = useState(
+    Object.keys(assumptions).find((k) => ALLOWED_PARAMETERS.includes(k) && typeof assumptions[k] === 'number') || ''
+  );
   const [value, setValue] = useState('');
 
-  // Filter assumptions to include only allowed parameters that are numbers
-  const filteredAssumptions = Object.keys(assumptions).filter(
-    (k) => ALLOWED_PARAMETERS.includes(k) && typeof assumptions[k] === 'number'
+  // Memoize filteredAssumptions to prevent recalculating on every render
+  const filteredAssumptions = useMemo(
+    () =>
+      Object.keys(assumptions).filter(
+        (k) => ALLOWED_PARAMETERS.includes(k) && typeof assumptions[k] === 'number'
+      ),
+    [assumptions]
   );
 
   return (
