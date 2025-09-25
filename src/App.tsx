@@ -193,7 +193,8 @@ export default function App() {
           handleExport={handleExport}
           fetchAudit={fetchAudit}
           auditTrail={auditTrail}
-          isExporting={isExporting}   // ✅ pass down
+          isExporting={isExporting}
+          snapshotId={snapshotId}
         />
       )}
       {page === 'audit' && <AuditPanel auditTrail={auditTrail} setPage={setPage} />}

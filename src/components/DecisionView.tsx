@@ -5,6 +5,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area,
   BarChart, Bar, CartesianGrid, Legend, ScatterChart, Scatter, ReferenceLine
 } from 'recharts';
+import WhatIfDrawer from './WhatIfDrawer';
 
 interface Candidate {
   type: string;
@@ -62,7 +63,8 @@ interface DecisionViewProps {
   handleExport: (format: string) => void;
   fetchAudit: () => Promise<void>;
   auditTrail: any[];
-  isExporting?: boolean; // New prop for export loading state
+  isExporting?: boolean;
+  snapshotId?: string | null; // Updated to match App.tsx
 }
 
 function DecisionView({
@@ -76,6 +78,7 @@ function DecisionView({
   fetchAudit,
   auditTrail,
   isExporting,
+  snapshotId,
 }: DecisionViewProps) {
   useEffect(() => {
     async function doFetchAudit() {
@@ -136,52 +139,52 @@ function DecisionView({
     return row;
   });
 
+  const effectiveSnapshotId = snapshotId || results?.snapshot_id || '';
+
   return (
     <div className="space-y-6">
       <SectionTitle>Decision View</SectionTitle>
       <div className="grid grid-cols-4 gap-4">
-        <>
-          <Stat
-            label="NAV Avg"
-            value={formatMoney(nav.avg_nav ?? 0)}
-            hint={nav.erosion_prob != null ? `Erosion: ${pct(nav.erosion_prob)}` : undefined}
-            tone={nav.erosion_prob && nav.erosion_prob > 0.1 ? 'warn' : 'good'}
-          />
-          <Stat
-            label="LTV Breach"
-            value={pct(ltv.exceed_prob ?? 0)}
-            hint={nav.cvar != null ? `CVaR: ${formatMoney(nav.cvar)}` : undefined}
-            tone={ltv.exceed_prob && ltv.exceed_prob > 0.1 ? 'warn' : 'good'}
-          />
-          <Stat
-            label="Dilution Avg"
-            value={pct(dil.avg_dilution ?? 0)}
-            hint={dil.base_dilution != null ? `Base: ${pct(dil.base_dilution)}` : undefined}
-          />
-          <Stat
-            label="ROE Avg"
-            value={pct(roe.avg_roe ?? 0)}
-            hint={roe.sharpe != null ? `Sharpe: ${num(roe.sharpe)}` : undefined}
-            tone={roe.avg_roe && roe.avg_roe > 0.1 ? 'good' : 'neutral'}
-          />
-          <Stat
-            label="Runway Mean"
-            value={months(run.dist_mean ?? 0)}
-            hint={run.p95 != null ? `P95: ${months(run.p95)}` : undefined}
-          />
-          <Stat
-            label="Cure Success"
-            value={pct(results?.metrics?.cure_success_rate ?? results?.cure_success_rate ?? 0)}
-          />
-          <Stat
-            label="Hedge PnL"
-            value={formatMoney(results?.metrics?.hedge_pnl_avg ?? results?.hedge_pnl_avg ?? 0)}
-          />
-          <Stat
-            label="Bull Prob"
-            value={pct(results?.metrics?.distribution_metrics?.bull_market_prob ?? results?.distribution_metrics?.bull_market_prob ?? 0)}
-          />
-        </>
+        <Stat
+          label="NAV Avg"
+          value={formatMoney(nav.avg_nav ?? 0)}
+          hint={nav.erosion_prob != null ? `Erosion: ${pct(nav.erosion_prob)}` : undefined}
+          tone={nav.erosion_prob && nav.erosion_prob > 0.1 ? 'warn' : 'good'}
+        />
+        <Stat
+          label="LTV Breach"
+          value={pct(ltv.exceed_prob ?? 0)}
+          hint={nav.cvar != null ? `CVaR: ${formatMoney(nav.cvar)}` : undefined}
+          tone={ltv.exceed_prob && ltv.exceed_prob > 0.1 ? 'warn' : 'good'}
+        />
+        <Stat
+          label="Dilution Avg"
+          value={pct(dil.avg_dilution ?? 0)}
+          hint={dil.base_dilution != null ? `Base: ${pct(dil.base_dilution)}` : undefined}
+        />
+        <Stat
+          label="ROE Avg"
+          value={pct(roe.avg_roe ?? 0)}
+          hint={roe.sharpe != null ? `Sharpe: ${num(roe.sharpe)}` : undefined}
+          tone={roe.avg_roe && roe.avg_roe > 0.1 ? 'good' : 'neutral'}
+        />
+        <Stat
+          label="Runway Mean"
+          value={months(run.dist_mean ?? 0)}
+          hint={run.p95 != null ? `P95: ${months(run.p95)}` : undefined}
+        />
+        <Stat
+          label="Cure Success"
+          value={pct(results?.metrics?.cure_success_rate ?? results?.cure_success_rate ?? 0)}
+        />
+        <Stat
+          label="Hedge PnL"
+          value={formatMoney(results?.metrics?.hedge_pnl_avg ?? results?.hedge_pnl_avg ?? 0)}
+        />
+        <Stat
+          label="Bull Prob"
+          value={pct(results?.metrics?.distribution_metrics?.bull_market_prob ?? results?.distribution_metrics?.bull_market_prob ?? 0)}
+        />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse bg-white dark:bg-zinc-900 rounded-lg shadow-sm">
@@ -322,6 +325,14 @@ function DecisionView({
           Audit
         </Button>
       </div>
+      {isWhatIfOpen && (
+        <WhatIfDrawer
+          assumptions={assumptions}
+          snapshotId={effectiveSnapshotId}
+          onRun={debouncedWhatIf}
+          setIsOpen={setIsWhatIfOpen}
+        />
+      )}
     </div>
   );
 }
