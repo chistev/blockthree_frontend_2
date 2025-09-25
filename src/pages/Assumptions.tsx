@@ -18,7 +18,7 @@ export default function Assumptions({
   isLoading,
   progress,
   error,
-  handleTickerSubmit, // New prop
+  handleTickerSubmit,
 }: any) {
   const groups = [
     { title: 'BTC Parameters', fields: ['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'IssuePrice'] },
@@ -32,15 +32,22 @@ export default function Assumptions({
   ];
   const advancedGroup = {
     title: 'Advanced Parameters',
-    fields: ['dilution_vol_estimate', 'vol_mean_reversion_speed', 'long_run_volatility', 'min_profit_margin', 'use_variance_reduction'],
+    fields: [
+      'dilution_vol_estimate',
+      'vol_mean_reversion_speed',
+      'long_run_volatility',
+      'min_profit_margin',
+      'use_variance_reduction',
+      'jump_intensity', // Added
+      'jump_mean', // Added
+      'jump_volatility', // Added
+    ],
   };
-
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && ticker) {
       handleTickerSubmit(ticker);
     }
   };
-
   return (
     <div className="space-y-6">
       <SectionTitle right={<Pill tone={mode === 'public' ? 'blue' : mode === 'private' ? 'gray' : 'violet'}>Mode: {mode}</Pill>}>

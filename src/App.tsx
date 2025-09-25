@@ -113,6 +113,59 @@ export default function App() {
     }
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
+
+    // Client-side validation: max 5MB (adjust based on your backend DATA_UPLOAD_MAX_MEMORY_SIZE)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      toast.error(`File too large (max ${MAX_FILE_SIZE / (1024 * 1024)}MB)`);
+      e.target.value = ''; // Clear input
+      return;
+    }
+
+    setFile(selectedFile);
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    if (ticker) formData.append('ticker', ticker); // Optional, if in 'public' mode
+
+    const toastId = toast.loading(`Uploading ${selectedFile.name}...`);
+    try {
+      const res = await fetch(API('/api/upload_sec_data/'), {
+        method: 'POST',
+        body: formData,
+      });
+      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      setAssumptions((prev: any) => ({
+        ...prev,
+        ...data, // Populate assumptions with parsed data (e.g., initial_equity_value, etc.)
+      }));
+
+      toast.update(toastId, {
+        render: `Successfully uploaded and parsed ${selectedFile.name}`,
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+
+      // Clear the file input after success
+      e.target.value = '';
+      setFile(null);
+    } catch (err: any) {
+      toast.update(toastId, {
+        render: `Error: ${err.message}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 3000,
+      });
+    }
+  };
+
   const handleCalculate = async () => {
     service.send('RUN');
     try {
@@ -230,7 +283,7 @@ export default function App() {
           setMode={setMode}
           ticker={ticker}
           setTicker={setTicker}
-          handleUpload={() => {}}
+          handleUpload={handleUpload}
           advancedOpen={advancedOpen}
           setAdvancedOpen={setAdvancedOpen}
           handleCalculate={handleCalculate}
@@ -238,7 +291,7 @@ export default function App() {
           isLoading={isLoading}
           progress={progress}
           error={error}
-          handleTickerSubmit={handleTickerSubmit} // Pass the handler
+          handleTickerSubmit={handleTickerSubmit}
         />
       )}
       {page === 'decision' && results && (

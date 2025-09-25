@@ -1,3 +1,4 @@
+// AssumptionGrid.tsx
 import React, { useState } from 'react';
 import { classNames } from '../utils';
 
@@ -57,33 +58,30 @@ const tooltips: { [key: string]: string } = {
   vol_mean_reversion_speed: "Speed of mean reversion for volatility in Heston model.",
   long_run_volatility: "Long-run volatility level in Heston model simulations.",
   min_profit_margin: "Minimum acceptable profit margin for optimization.",
-  use_variance_reduction: "Enable variance reduction techniques in Monte Carlo simulations."
+  use_variance_reduction: "Enable variance reduction techniques in Monte Carlo simulations.",
+  jump_intensity: "Annual intensity (lambda) of jumps in the Bitcoin price process.", // Added
+  jump_mean: "Mean of the jump size (log return) in the Bitcoin price process.", // Added
+  jump_volatility: "Volatility of the jump size in the Bitcoin price process.", // Added
 };
 
 export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
   if (!assumptions) return null;
   const keys = groupFields || Object.keys(assumptions || {}).filter(k => ['number', 'string', 'boolean'].includes(typeof assumptions[k]));
-
   const Field = ({ k }: { k: string }) => {
     const [inputValue, setInputValue] = useState(assumptions[k] ?? '');
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       setInputValue(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
     };
-
     const handleCommit = () => {
       const value = typeof assumptions[k] === 'number' ? Number(inputValue) : inputValue;
       setAssumptions({ ...assumptions, [k]: value });
     };
-
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         handleCommit();
       }
     };
-
     const val = assumptions[k];
-
     // Common label component with question mark icon and tooltip
     const LabelWithTooltip = () => (
       <div className="flex items-center gap-2">
@@ -100,7 +98,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         )}
       </div>
     );
-
     // Special case for hedge_policy
     if (k === 'hedge_policy') {
       return (
@@ -119,7 +116,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
-
     // Special case for objective_preset
     if (k === 'objective_preset') {
       return (
@@ -139,7 +135,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
-
     // Special case for deribit_iv_source
     if (k === 'deribit_iv_source') {
       return (
@@ -158,7 +153,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
-
     // Read-only field for BTC_current_market_price
     if (k === 'BTC_current_market_price') {
       return (
@@ -174,7 +168,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
-
     if (typeof val === 'number') {
       return (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
@@ -187,11 +180,11 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
             onKeyDown={handleKeyDown}
             className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
             aria-describedby={`${k}-tooltip`}
+            step={k.includes('jump') ? '0.01' : 'any'} // Added step for jump parameters to allow decimals
           />
         </label>
       );
     }
-
     if (typeof val === 'boolean') {
       return (
         <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
@@ -207,7 +200,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
-
     return (
       <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
         <LabelWithTooltip />
@@ -223,7 +215,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
       </label>
     );
   };
-
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
       {keys.map((k) => <Field key={k} k={k} />)}
