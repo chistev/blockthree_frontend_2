@@ -23,6 +23,7 @@ export default function App() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
+  const [isExporting, setIsExporting] = useState(false); // ✅ state for disabling export
 
   // Handle dark mode class on html element
   useEffect(() => {
@@ -116,8 +117,15 @@ export default function App() {
   };
 
   const handleExport = async (format: string) => {
+    if (isExporting) return; // ✅ prevent multiple clicks
+    setIsExporting(true); 
+    const toastId = toast.loading("Downloading PDF..."); 
     try {
-      const res = await fetch(API('/api/calculate/'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }) });
+      const res = await fetch(API('/api/calculate/'), { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }) 
+      });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -126,8 +134,21 @@ export default function App() {
       a.download = `treasury.${format}`;
       a.click();
       URL.revokeObjectURL(url);
+      toast.update(toastId, { 
+        render: "PDF downloaded successfully!", 
+        type: "success", 
+        isLoading: false, 
+        autoClose: 3000 
+      });
     } catch (e: any) {
-      toast.error(e.message);
+      toast.update(toastId, { 
+        render: e.message, 
+        type: "error", 
+        isLoading: false, 
+        autoClose: 3000 
+      });
+    } finally {
+      setIsExporting(false); 
     }
   };
 
@@ -167,11 +188,12 @@ export default function App() {
           assumptions={assumptions}
           setPage={setPage}
           debouncedWhatIf={debouncedWhatIf}
-          isWhatIfOpen={false}
-          setIsWhatIfOpen={() => {}}
+          isWhatIfOpen={isWhatIfOpen}
+          setIsWhatIfOpen={setIsWhatIfOpen}
           handleExport={handleExport}
           fetchAudit={fetchAudit}
           auditTrail={auditTrail}
+          isExporting={isExporting}   // ✅ pass down
         />
       )}
       {page === 'audit' && <AuditPanel auditTrail={auditTrail} setPage={setPage} />}

@@ -62,6 +62,7 @@ interface DecisionViewProps {
   handleExport: (format: string) => void;
   fetchAudit: () => Promise<void>;
   auditTrail: any[];
+  isExporting?: boolean; // New prop for export loading state
 }
 
 function DecisionView({
@@ -74,6 +75,7 @@ function DecisionView({
   handleExport,
   fetchAudit,
   auditTrail,
+  isExporting,
 }: DecisionViewProps) {
   useEffect(() => {
     async function doFetchAudit() {
@@ -249,7 +251,7 @@ function DecisionView({
               <Button onClick={() => setExpanded(expanded === i ? null : i)} variant="ghost" className="mt-2">
                 Toggle Details
               </Button>
-              {expanded === i && <TermSheet results={cand.metrics} setPage={setPage} handleExport={handleExport} />}
+              {expanded === i && <TermSheet results={cand.metrics} setPage={setPage} handleExport={handleExport} isExporting={isExporting} />}
             </Card>
           );
         })}
@@ -313,8 +315,8 @@ function DecisionView({
         <Button onClick={() => setIsWhatIfOpen(true)} variant="primary">
           What-If / Stress
         </Button>
-        <Button onClick={() => handleExport('pdf')} variant="primary">
-          Export PDF
+        <Button onClick={() => handleExport('pdf')} variant="primary" disabled={isExporting}>
+          {isExporting ? 'Exporting...' : 'Export PDF'}
         </Button>
         <Button onClick={() => setPage('audit')} variant="primary">
           Audit
@@ -324,7 +326,7 @@ function DecisionView({
   );
 }
 
-function TermSheet({ results, setPage, handleExport }: { results: any; setPage: (page: string) => void; handleExport: (format: string) => void }) {
+function TermSheet({ results, setPage, handleExport, isExporting }: { results: any; setPage: (page: string) => void; handleExport: (format: string) => void; isExporting?: boolean }) {
   const ts = results?.term_sheet || {};
   const bi = results?.business_impact || {};
   const sm = results?.scenario_metrics || {};
@@ -332,7 +334,9 @@ function TermSheet({ results, setPage, handleExport }: { results: any; setPage: 
 
   return (
     <Card>
-      <SectionTitle right={<Button onClick={() => handleExport('pdf')} variant="ghost">Export</Button>}>
+      <SectionTitle right={<Button onClick={() => handleExport('pdf')} variant="ghost" disabled={isExporting}>
+        {isExporting ? 'Exporting...' : 'Export'}
+      </Button>}>
         Term Sheet
       </SectionTitle>
       <table className="w-full border-collapse">
@@ -419,8 +423,8 @@ function TermSheet({ results, setPage, handleExport }: { results: any; setPage: 
         <Button onClick={() => setPage('decision')} variant="ghost">
           Back
         </Button>
-        <Button onClick={() => handleExport('pdf')} variant="primary">
-          Export
+        <Button onClick={() => handleExport('pdf')} variant="primary" disabled={isExporting}>
+          {isExporting ? 'Exporting...' : 'Export'}
         </Button>
       </div>
     </Card>
