@@ -1,9 +1,24 @@
-import React from 'react'
-import { Card, SectionTitle, Pill, Button } from '../components/Primitives'
-import AssumptionGrid from '../components/AssumptionGrid'
+// Assumptions.tsx
+import React from 'react';
+import { Card, SectionTitle, Pill, Button } from '../components/Primitives';
+import AssumptionGrid from '../components/AssumptionGrid';
+
 export default function Assumptions({
-  assumptions, setAssumptions, mode, setMode, ticker, setTicker, handleUpload, advancedOpen, setAdvancedOpen,
-  handleCalculate, snapshotId, isLoading, progress, error
+  assumptions,
+  setAssumptions,
+  mode,
+  setMode,
+  ticker,
+  setTicker,
+  handleUpload,
+  advancedOpen,
+  setAdvancedOpen,
+  handleCalculate,
+  snapshotId,
+  isLoading,
+  progress,
+  error,
+  handleTickerSubmit, // New prop
 }: any) {
   const groups = [
     { title: 'BTC Parameters', fields: ['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'IssuePrice'] },
@@ -15,17 +30,45 @@ export default function Assumptions({
     { title: 'Hedging', fields: ['hedge_policy', 'hedge_intensity', 'hedge_tenor_days', 'deribit_iv_source', 'manual_iv'] },
     { title: 'Optimizer Constraints', fields: ['objective_preset', 'cvar_on', 'max_dilution', 'min_runway_months', 'max_breach_prob'] },
   ];
-  const advancedGroup = { title: 'Advanced Parameters', fields: ['dilution_vol_estimate', 'vol_mean_reversion_speed', 'long_run_volatility', 'min_profit_margin', 'use_variance_reduction'] };
+  const advancedGroup = {
+    title: 'Advanced Parameters',
+    fields: ['dilution_vol_estimate', 'vol_mean_reversion_speed', 'long_run_volatility', 'min_profit_margin', 'use_variance_reduction'],
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && ticker) {
+      handleTickerSubmit(ticker);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <SectionTitle right={<Pill tone={mode === 'public' ? 'blue' : mode === 'private' ? 'gray' : 'violet'}>Mode: {mode}</Pill>}>Assumptions</SectionTitle>
-      <select value={mode} onChange={e => setMode(e.target.value)} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600">
+      <SectionTitle right={<Pill tone={mode === 'public' ? 'blue' : mode === 'private' ? 'gray' : 'violet'}>Mode: {mode}</Pill>}>
+        Assumptions
+      </SectionTitle>
+      <select
+        value={mode}
+        onChange={(e) => setMode(e.target.value)}
+        className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600"
+      >
         <option value="public">Public (SEC)</option>
         <option value="private">Private</option>
         <option value="pro-forma">Pro-Forma</option>
       </select>
-      {mode === 'public' && <input placeholder="Ticker" value={ticker} onChange={e => setTicker(e.target.value)} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600" />}
-      <input type="file" onChange={handleUpload} className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600" />
+      {mode === 'public' && (
+        <input
+          placeholder="Ticker (e.g., AMZN)"
+          value={ticker}
+          onChange={(e) => setTicker(e.target.value)}
+          onKeyDown={onKeyDown}
+          className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600"
+        />
+      )}
+      <input
+        type="file"
+        onChange={handleUpload}
+        className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600"
+      />
       {groups.map((g: any) => (
         <Card key={g.title}>
           <SectionTitle>{g.title}</SectionTitle>
@@ -33,25 +76,20 @@ export default function Assumptions({
         </Card>
       ))}
       <Card>
-  <div
-    className="cursor-pointer"
-    onClick={() => setAdvancedOpen(!advancedOpen)}
-  >
-    <SectionTitle>{advancedOpen ? 'Hide' : 'Show'} Advanced Parameters</SectionTitle>
-  </div>
-  {advancedOpen && (
-    <div onClick={(e) => e.stopPropagation()}>
-      <AssumptionGrid
-        assumptions={assumptions}
-        setAssumptions={setAssumptions}
-        groupFields={advancedGroup.fields}
-      />
-    </div>
-  )}
-</Card>
-      <Button onClick={handleCalculate} disabled={isLoading} variant="primary">{isLoading ? `Running... ${progress}%` : 'Run Models'}</Button>
+        <div className="cursor-pointer" onClick={() => setAdvancedOpen(!advancedOpen)}>
+          <SectionTitle>{advancedOpen ? 'Hide' : 'Show'} Advanced Parameters</SectionTitle>
+        </div>
+        {advancedOpen && (
+          <div onClick={(e) => e.stopPropagation()}>
+            <AssumptionGrid assumptions={assumptions} setAssumptions={setAssumptions} groupFields={advancedGroup.fields} />
+          </div>
+        )}
+      </Card>
+      <Button onClick={handleCalculate} disabled={isLoading} variant="primary">
+        {isLoading ? `Running... ${progress}%` : 'Run Models'}
+      </Button>
       {snapshotId && <Pill tone="green">Snapshot: {snapshotId}</Pill>}
       {error && <p className="text-red-500 text-[14px]">{error}</p>}
     </div>
-  )
+  );
 }

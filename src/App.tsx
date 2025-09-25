@@ -1,13 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import Landing from './pages/Landing'
-import Assumptions from './pages/Assumptions'
-import DecisionView from './components/DecisionView'
-import AuditPanel from './components/AuditPanel'
-import { Button } from './components/Primitives'
-import { API } from './utils'
-import { debounce } from 'lodash'
-import { Machine, interpret } from 'xstate'
-import { ToastContainer, toast } from 'react-toastify'
+// App.tsx
+import React, { useEffect, useMemo, useState } from 'react';
+import Landing from './pages/Landing';
+import Assumptions from './pages/Assumptions';
+import DecisionView from './components/DecisionView';
+import AuditPanel from './components/AuditPanel';
+import { Button } from './components/Primitives';
+import { API } from './utils';
+import { debounce } from 'lodash';
+import { Machine, interpret } from 'xstate';
+import { ToastContainer, toast } from 'react-toastify';
 
 export default function App() {
   const [page, setPage] = useState('landing');
@@ -23,7 +24,8 @@ export default function App() {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
-  const [isExporting, setIsExporting] = useState(false); // ✅ state for disabling export
+  const [isExporting, setIsExporting] = useState(false);
+  const [isTickerLoading, setIsTickerLoading] = useState(false); // New loading state
 
   // Handle dark mode class on html element
   useEffect(() => {
@@ -47,7 +49,10 @@ export default function App() {
   });
   const [machineState, setMachineState] = useState('idle');
   const service = useMemo(() => interpret(runModelMachine).onTransition((state) => setMachineState(String(state.value))), []);
-  useEffect(() => { service.start(); return () => service.stop(); }, [service]);
+  useEffect(() => {
+    service.start();
+    return () => service.stop();
+  }, [service]);
 
   useEffect(() => {
     const initialize = async () => {
@@ -59,7 +64,11 @@ export default function App() {
         const btcRes = await fetch(API('/api/btc_price/'));
         if (!btcRes.ok) throw new Error('Failed to fetch BTC price');
         const btcData = await btcRes.json();
-        setAssumptions((prev: any) => ({ ...prev, BTC_current_market_price: btcData.BTC_current_market_price, targetBTCPrice: btcData.BTC_current_market_price }));
+        setAssumptions((prev: any) => ({
+          ...prev,
+          BTC_current_market_price: btcData.BTC_current_market_price,
+          targetBTCPrice: btcData.BTC_current_market_price,
+        }));
       } catch (e: any) {
         setError(e.message);
       }
@@ -67,15 +76,60 @@ export default function App() {
     initialize();
   }, []);
 
+  const handleTickerSubmit = async (ticker: string) => {
+    if (!ticker) return;
+    setIsTickerLoading(true);
+    setError(null);
+    const toastId = toast.loading(`Fetching SEC data for ${ticker}...`);
+    try {
+      const res = await fetch(API('/api/fetch_sec_data/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker }),
+      });
+      if (!res.ok) throw new Error(`Failed to fetch SEC data for ${ticker}`);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setAssumptions((prev: any) => ({
+        ...prev,
+        ...data, // Update assumptions with fetched SEC data
+      }));
+      toast.update(toastId, {
+        render: `Successfully fetched SEC data for ${ticker}`,
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } catch (e: any) {
+      setError(e.message);
+      toast.update(toastId, {
+        render: `Error: ${e.message}`,
+        type: 'error',
+        isLoading: false,
+        autoClose: 3000,
+      });
+    } finally {
+      setIsTickerLoading(false);
+    }
+  };
+
   const handleCalculate = async () => {
     service.send('RUN');
     try {
-      const res = await fetch(API('/api/lock_snapshot/'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assumptions, mode }) });
+      const res = await fetch(API('/api/lock_snapshot/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assumptions, mode }),
+      });
       if (!res.ok) throw new Error('Lock failed');
       const data = await res.json();
       setSnapshotId(data.snapshot_id);
       service.send('LOCKED');
-      const calcRes = await fetch(API('/api/calculate/'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ assumptions, format: 'json', use_live: true, snapshot_id: data.snapshot_id }) });
+      const calcRes = await fetch(API('/api/calculate/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assumptions, format: 'json', use_live: true, snapshot_id: data.snapshot_id }),
+      });
       if (!calcRes.ok) throw new Error('Calculation failed');
       const calcData = await calcRes.json();
       setResults(calcData);
@@ -89,21 +143,25 @@ export default function App() {
     }
   };
 
-  const debouncedWhatIf = useMemo(() => debounce(async ({ param, value }: { param: string, value: number }) => {
-    if (!snapshotId) return;
-    try {
-      const res = await fetch(API('/api/what_if/'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ param, value, snapshot_id: snapshotId, format: 'json' })
-      });
-      if (!res.ok) throw new Error('What-If failed');
-      const data = await res.json();
-      setResults(data);
-    } catch (e: any) {
-      setError(e.message);
-    }
-  }, 500), [snapshotId]);
+  const debouncedWhatIf = useMemo(
+    () =>
+      debounce(async ({ param, value }: { param: string; value: number }) => {
+        if (!snapshotId) return;
+        try {
+          const res = await fetch(API('/api/what_if/'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ param, value, snapshot_id: snapshotId, format: 'json' }),
+          });
+          if (!res.ok) throw new Error('What-If failed');
+          const data = await res.json();
+          setResults(data);
+        } catch (e: any) {
+          setError(e.message);
+        }
+      }, 500),
+    [snapshotId]
+  );
 
   const fetchAudit = async () => {
     try {
@@ -117,14 +175,14 @@ export default function App() {
   };
 
   const handleExport = async (format: string) => {
-    if (isExporting) return; // ✅ prevent multiple clicks
-    setIsExporting(true); 
-    const toastId = toast.loading("Downloading PDF..."); 
+    if (isExporting) return;
+    setIsExporting(true);
+    const toastId = toast.loading('Downloading PDF...');
     try {
-      const res = await fetch(API('/api/calculate/'), { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }) 
+      const res = await fetch(API('/api/calculate/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }),
       });
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
@@ -134,21 +192,21 @@ export default function App() {
       a.download = `treasury.${format}`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.update(toastId, { 
-        render: "PDF downloaded successfully!", 
-        type: "success", 
-        isLoading: false, 
-        autoClose: 3000 
+      toast.update(toastId, {
+        render: 'PDF downloaded successfully!',
+        type: 'success',
+        isLoading: false,
+        autoClose: 3000,
       });
     } catch (e: any) {
-      toast.update(toastId, { 
-        render: e.message, 
-        type: "error", 
-        isLoading: false, 
-        autoClose: 3000 
+      toast.update(toastId, {
+        render: e.message,
+        type: 'error',
+        isLoading: false,
+        autoClose: 3000,
       });
     } finally {
-      setIsExporting(false); 
+      setIsExporting(false);
     }
   };
 
@@ -180,6 +238,7 @@ export default function App() {
           isLoading={isLoading}
           progress={progress}
           error={error}
+          handleTickerSubmit={handleTickerSubmit} // Pass the handler
         />
       )}
       {page === 'decision' && results && (
@@ -199,5 +258,5 @@ export default function App() {
       )}
       {page === 'audit' && <AuditPanel auditTrail={auditTrail} setPage={setPage} />}
     </div>
-  )
+  );
 }
