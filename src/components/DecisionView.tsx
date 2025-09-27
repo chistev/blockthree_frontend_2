@@ -1,11 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, SectionTitle, Pill, Button, Stat } from './Primitives';
 import { pct, num, months, formatMoney, riskTone, structureLabel } from '../utils';
-import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area,
-  BarChart, Bar, CartesianGrid, Legend, ScatterChart, Scatter, ReferenceLine
-} from 'recharts';
 import WhatIfDrawer from './WhatIfDrawer';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
 
 interface Candidate {
   type: string;
@@ -68,6 +65,18 @@ interface DecisionViewProps {
   snapshotId?: string | null;
 }
 
+// Helper function to prepare NAV data for the chart
+function prepareNavData(navPaths: number[]): { nav: number; cumulative: number }[] {
+  if (!navPaths || navPaths.length === 0) return [];
+  
+  // Sort the NAV values and compute cumulative percentage for distribution view
+  const sorted = [...navPaths].sort((a, b) => a - b);
+  return sorted.map((nav, index) => ({
+    nav,
+    cumulative: ((index + 1) / sorted.length) * 100, // Cumulative % (0 to 100)
+  }));
+}
+
 function DecisionView({
   results,
   assumptions,
@@ -97,27 +106,6 @@ function DecisionView({
   const dil = results?.metrics?.dilution || results?.dilution || {};
   const roe = results?.metrics?.roe || results?.roe || {};
   const run = results?.metrics?.runway || results?.runway || {};
-
-  // Get nav_paths data - handle both single path (1D array) and multiple paths (2D array)
-  const navPaths = results?.metrics?.nav?.nav_paths || results?.nav?.nav_paths || [];
-  const ltvPaths = results?.metrics?.ltv?.ltv_paths || results?.ltv?.ltv_paths || [];
-  const dilutionPaths = results?.metrics?.dilution?.dilution_paths || results?.dilution?.dilution_paths || [];
-
-  // Prepare chart data - handle single path case
-  const navChartData = Array.isArray(navPaths) && navPaths.length > 0 
-    ? navPaths.map((value: number, index: number) => ({ time: index, nav: value }))
-    : [];
-
-  const ltvChartData = Array.isArray(ltvPaths) && ltvPaths.length > 0
-    ? ltvPaths.map((value: number, index: number) => ({ index: index, ltv: value }))
-    : [];
-
-  const dilutionChartData = Array.isArray(dilutionPaths) && dilutionPaths.length > 0
-    ? dilutionPaths.map((d: number, i: number) => ({
-        debt: (assumptions.LoanPrincipal || 0) * (i / (ltvPaths.length || 1)),
-        dil: d,
-      }))
-    : [];
 
   // Holistic Comparison Table with guarded metrics
   const comparisonData = candidates.map((cand: Candidate, i: number) => {
@@ -282,71 +270,40 @@ function DecisionView({
         })}
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {/* NAV Chart - Single Clean Line */}
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={navChartData}>
-              <XAxis dataKey="time" tickFormatter={num} />
-              <YAxis tickFormatter={formatMoney} />
-              <Tooltip formatter={formatMoney} />
-              <Line 
-                type="monotone" 
-                dataKey="nav" 
-                stroke="#10b981" 
-                strokeWidth={3}
-                dot={false}
-                activeDot={{ r: 4, fill: "#10b981" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        
-        {/* LTV Chart - Single Clean Area */}
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={ltvChartData}>
-              <XAxis dataKey="index" hide />
-              <YAxis tickFormatter={pct} />
-              <Tooltip formatter={pct} />
-              <Area 
-                type="monotone" 
-                dataKey="ltv" 
-                stroke="#82ca9d" 
-                fill="#82ca9d" 
-                fillOpacity={0.3}
-              />
-              <ReferenceLine y={assumptions.LTV_Cap || 0} stroke="red" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-        
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart data={dilutionChartData}>
-              <XAxis type="number" dataKey="debt" name="Debt" tickFormatter={formatMoney} />
-              <YAxis type="number" dataKey="dil" name="Dilution" tickFormatter={pct} />
-              <Tooltip formatter={pct} />
-              <Scatter name="Dil vs Debt" dataKey="dil" fill="#ff7300" />
-            </ScatterChart>
-          </ResponsiveContainer>
-        </div>
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={Object.entries(results?.metrics?.scenario_metrics || results?.scenario_metrics || {}).map(([k, v]: [string, any]) => ({
-                name: k,
-                delta: (v as any).nav_impact || 0,
-              }))}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis tickFormatter={formatMoney} />
-              <Tooltip formatter={formatMoney} />
-              <Legend />
-              <Bar dataKey="delta" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <Card>
+  <SectionTitle>NAV Distribution</SectionTitle>
+  <ResponsiveContainer width="100%" height={300}>
+    <AreaChart
+      data={prepareNavData(nav.nav_paths || [])}
+      margin={{ top: 10, right: 30, left: 15, bottom: 20 }} 
+    >
+      <XAxis
+        dataKey="nav"
+        tickFormatter={(value) => formatMoney(value, 0)}
+        label={{ value: 'NAV (USD)', position: 'bottom', offset: 0 }}
+      />
+      <YAxis
+        tickFormatter={(value) => `${value}%`}
+        label={{ 
+          value: 'Cumulative Probability (%)', 
+          angle: -90, 
+          position: 'insideLeft', 
+          offset: -10, // Adjusted offset
+          style: { textAnchor: 'middle' } // Better text alignment
+        }}
+      />
+      <Tooltip formatter={(value: number) => formatMoney(value, 0)} />
+      <Area type="monotone" dataKey="cumulative" stroke="#10b981" fill="#10b981" />
+    </AreaChart>
+  </ResponsiveContainer>
+  <p className="text-[12px] text-gray-500 mt-2">
+    Shows cumulative distribution of simulated terminal NAV values (erosion prob: {pct(nav.erosion_prob ?? 0)}).
+  </p>
+</Card>
+        <Card>
+          <SectionTitle>LTV Paths (Placeholder)</SectionTitle>
+          <p className="text-[14px] text-gray-500">Add LTV chart here for balance.</p>
+        </Card>
       </div>
       <div className="flex space-x-4">
         <Button onClick={() => setIsWhatIfOpen(true)} variant="primary">
