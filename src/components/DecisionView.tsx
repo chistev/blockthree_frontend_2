@@ -397,59 +397,58 @@ function DecisionView({
         <SectionTitle>Dilution vs Debt Analysis</SectionTitle>
         <ResponsiveContainer width="100%" height={300}>
           <ScatterChart
-            data={prepareDilutionVsDebtData(candidates)}
-            margin={{ top: 20, right: 30, left: 15, bottom: 20 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="debt"
-              type="number"
-              tickFormatter={(value) => formatMoney(value, 0)}
-              label={{ value: 'Debt Amount (USD)', position: 'bottom', offset: 0 }}
-              domain={['dataMin - dataMin * 0.1', 'dataMax + dataMax * 0.1']}
-            />
-            <YAxis
-              dataKey="dilution"
-              type="number"
-              tickFormatter={(value) => pct(value)}
-              label={{ 
-                value: 'Average Dilution', 
-                angle: -90, 
-                position: 'insideLeft', 
-                offset: -10,
-                style: { textAnchor: 'middle' }
-              }}
-              domain={[0, 'dataMax + dataMax * 0.1']}
-            />
-            <ZAxis dataKey="amount" range={[50, 300]} name="Amount" />
-            <Tooltip 
-  content={<CustomTooltip />} 
-  position={{ x: 20, y: 20 }} // fixed top-left
-  wrapperStyle={{ pointerEvents: 'none' }}
-  
-/>
-            <Legend />
-            <Scatter 
-  name="Financing Options" 
-  data={prepareDilutionVsDebtData(candidates)} 
-  fill="#8884d8"
-  shape={(props) => {
-    const { cx, cy, payload } = props;
-    const structure = payload.structure;
-    
-    // Different colors for different structures
-    const fillColor = structure === 'ATM' ? '#8884d8' : 
-                     structure === 'PIPE' ? '#82ca9d' : 
-                     structure === 'Loan' ? '#ffc658' : 
-                     '#ff7300';
-    
-    // Use consistent circle shapes for stable tooltips
-    return <circle cx={cx} cy={cy} r={6} fill={fillColor} />;
-  }}
-/>
-            <ReferenceLine y={0.1} stroke="red" strokeDasharray="3 3" label="10% Dilution Threshold" />
-            <ReferenceLine x={assumptions.LoanPrincipal} stroke="blue" strokeDasharray="3 3" label="Current Debt" />
-          </ScatterChart>
+  data={prepareDilutionVsDebtData(candidates)}
+  margin={{ top: 20, right: 30, left: 15, bottom: 20 }}
+>
+  <CartesianGrid strokeDasharray="3 3" />
+  <XAxis
+    dataKey="debt"
+    type="number"
+    tickFormatter={(value) => formatMoney(value, 0)}
+    label={{ value: 'Debt Amount (USD)', position: 'bottom', offset: 0 }}
+    domain={['dataMin - dataMin * 0.1', 'dataMax + dataMax * 0.1']}
+  />
+  <YAxis
+    dataKey="dilution"
+    type="number"
+    tickFormatter={(value) => pct(value)}
+    label={{ 
+      value: 'Average Dilution', 
+      angle: -90, 
+      position: 'insideLeft', 
+      offset: -10,
+      style: { textAnchor: 'middle' }
+    }}
+    domain={[0, 'dataMax + dataMax * 0.1']}
+  />
+  <ZAxis dataKey="amount" range={[50, 300]} name="Amount" />
+  <Tooltip 
+    content={<CustomTooltip />} 
+    position={{ x: 20, y: 20 }}
+    wrapperStyle={{ pointerEvents: 'none' }}
+  />
+  <Legend 
+    layout="horizontal" 
+    align="center" 
+    verticalAlign="top" // Move legend to the top to avoid overlap with XAxis label
+  />
+  <Scatter 
+    name="Financing Options" 
+    data={prepareDilutionVsDebtData(candidates)} 
+    fill="#8884d8"
+    shape={(props) => {
+      const { cx, cy, payload } = props;
+      const structure = payload.structure;
+      const fillColor = structure === 'ATM' ? '#8884d8' : 
+                       structure === 'PIPE' ? '#82ca9d' : 
+                       structure === 'Loan' ? '#ffc658' : 
+                       '#ff7300';
+      return <circle cx={cx} cy={cy} r={6} fill={fillColor} />;
+    }}
+  />
+  <ReferenceLine y={0.1} stroke="red" strokeDasharray="3 3" label="10% Dilution Threshold" />
+  <ReferenceLine x={assumptions.LoanPrincipal} stroke="blue" strokeDasharray="3 3" label="Current Debt" />
+</ScatterChart>
         </ResponsiveContainer>
         <p className="text-[12px] text-gray-500 mt-2">
           Shows the trade-off between dilution and debt across different financing structures. 
