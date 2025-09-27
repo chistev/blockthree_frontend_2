@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Card, SectionTitle, Pill, Button, Stat } from './Primitives';
 import { pct, num, months, formatMoney, riskTone, structureLabel } from '../utils';
 import WhatIfDrawer from './WhatIfDrawer';
-import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, LineChart, Line, ReferenceLine } from 'recharts';
 
 interface Candidate {
   type: string;
@@ -74,6 +74,17 @@ function prepareNavData(navPaths: number[]): { nav: number; cumulative: number }
   return sorted.map((nav, index) => ({
     nav,
     cumulative: ((index + 1) / sorted.length) * 100, // Cumulative % (0 to 100)
+  }));
+}
+
+// Helper function to prepare LTV data for the chart (similar structure but for ratios)
+function prepareLtvData(ltvPaths: number[]): { ltv: number; cumulative: number }[] {
+  if (!ltvPaths || ltvPaths.length === 0) return [];
+  
+  const sorted = [...ltvPaths].sort((a, b) => a - b);
+  return sorted.map((ltv, index) => ({
+    ltv,
+    cumulative: ((index + 1) / sorted.length) * 100,
   }));
 }
 
@@ -271,38 +282,65 @@ function DecisionView({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <Card>
-  <SectionTitle>NAV Distribution</SectionTitle>
-  <ResponsiveContainer width="100%" height={300}>
-    <AreaChart
-      data={prepareNavData(nav.nav_paths || [])}
-      margin={{ top: 10, right: 30, left: 15, bottom: 20 }} 
-    >
-      <XAxis
-        dataKey="nav"
-        tickFormatter={(value) => formatMoney(value, 0)}
-        label={{ value: 'NAV (USD)', position: 'bottom', offset: 0 }}
-      />
-      <YAxis
-        tickFormatter={(value) => `${value}%`}
-        label={{ 
-          value: 'Cumulative Probability (%)', 
-          angle: -90, 
-          position: 'insideLeft', 
-          offset: -10, // Adjusted offset
-          style: { textAnchor: 'middle' } // Better text alignment
-        }}
-      />
-      <Tooltip formatter={(value: number) => formatMoney(value, 0)} />
-      <Area type="monotone" dataKey="cumulative" stroke="#10b981" fill="#10b981" />
-    </AreaChart>
-  </ResponsiveContainer>
-  <p className="text-[12px] text-gray-500 mt-2">
-    Shows cumulative distribution of simulated terminal NAV values (erosion prob: {pct(nav.erosion_prob ?? 0)}).
-  </p>
-</Card>
+          <SectionTitle>NAV Distribution</SectionTitle>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart
+              data={prepareNavData(nav.nav_paths || [])}
+              margin={{ top: 10, right: 30, left: 15, bottom: 20 }} 
+            >
+              <XAxis
+                dataKey="nav"
+                tickFormatter={(value) => formatMoney(value, 0)}
+                label={{ value: 'NAV (USD)', position: 'bottom', offset: 0 }}
+              />
+              <YAxis
+                tickFormatter={(value) => `${value}%`}
+                label={{ 
+                  value: 'Cumulative Probability (%)', 
+                  angle: -90, 
+                  position: 'insideLeft', 
+                  offset: -10, // Adjusted offset
+                  style: { textAnchor: 'middle' } // Better text alignment
+                }}
+              />
+              <Tooltip formatter={(value: number) => formatMoney(value, 0)} />
+              <Area type="monotone" dataKey="cumulative" stroke="#10b981" fill="#10b981" />
+            </AreaChart>
+          </ResponsiveContainer>
+          <p className="text-[12px] text-gray-500 mt-2">
+            Shows cumulative distribution of simulated terminal NAV values (erosion prob: {pct(nav.erosion_prob ?? 0)}).
+          </p>
+        </Card>
         <Card>
-          <SectionTitle>LTV Paths (Placeholder)</SectionTitle>
-          <p className="text-[14px] text-gray-500">Add LTV chart here for balance.</p>
+          <SectionTitle>LTV Ratio Distribution</SectionTitle>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart
+              data={prepareLtvData(ltv.ltv_paths || [])}
+              margin={{ top: 10, right: 30, left: 15, bottom: 20 }}
+            >
+              <XAxis
+                dataKey="ltv"
+                tickFormatter={(value) => pct(value)}
+                label={{ value: 'LTV Ratio', position: 'bottom', offset: 0 }}
+              />
+              <YAxis
+                tickFormatter={(value) => `${value}%`}
+                label={{ 
+                  value: 'Cumulative Probability (%)', 
+                  angle: -90, 
+                  position: 'insideLeft', 
+                  offset: -10,
+                  style: { textAnchor: 'middle' }
+                }}
+              />
+              <Tooltip formatter={(value: number) => pct(value)} />
+              <Line type="monotone" dataKey="cumulative" stroke="#8884d8" dot={false} />
+              <ReferenceLine x={assumptions.LTV_Cap ?? 0} stroke="red" label="LTV Cap" />
+            </LineChart>
+          </ResponsiveContainer>
+          <p className="text-[12px] text-gray-500 mt-2">
+            Shows cumulative distribution of simulated terminal LTV ratios (exceed prob: {pct(ltv.exceed_prob ?? 0)}).
+          </p>
         </Card>
       </div>
       <div className="flex space-x-4">
