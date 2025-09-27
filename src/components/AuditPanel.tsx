@@ -48,6 +48,10 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [modeFilter, setModeFilter] = useState<string>('all');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchAudit = async () => {
     setLoading(true);
@@ -57,6 +61,7 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
       if (!res.ok) throw new Error('Failed to fetch audit trail');
       const data = await res.json();
       setAuditTrail(Array.isArray(data?.audit_trail) ? data.audit_trail : []);
+      setCurrentPage(1); // Reset to first page when refreshing
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -81,17 +86,88 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
     });
   }, [auditTrail, query, modeFilter]);
 
+  // Pagination calculations
+  const totalItems = filtered.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedItems = filtered.slice(startIndex, endIndex);
+
   const bySnapshot = useMemo(() => {
     const m = new Map<string, AuditEntry[]>();
-    for (const e of filtered) {
+    for (const e of paginatedItems) {
       const key = e.snapshot_id || '—';
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(e);
     }
     return m;
-  }, [filtered]);
+  }, [paginatedItems]);
 
   const snapshotKeys = Array.from(bySnapshot.keys());
+
+  // Pagination controls component
+  const PaginationControls = () => (
+    <div className="flex items-center justify-between mt-6">
+      <div className="flex items-center gap-4">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          Showing {startIndex + 1}-{Math.min(endIndex, totalItems)} of {totalItems} entries
+        </span>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => {
+            setItemsPerPage(Number(e.target.value));
+            setCurrentPage(1);
+          }}
+          className="px-2 py-1 text-sm rounded border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900"
+        >
+          <option value={5}>5 per page</option>
+          <option value={10}>10 per page</option>
+          <option value={25}>25 per page</option>
+          <option value={50}>50 per page</option>
+        </select>
+      </div>
+      
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={() => setCurrentPage(1)}
+          disabled={currentPage === 1}
+          variant="ghost"
+          className="px-3 py-1 text-sm"
+        >
+          First
+        </Button>
+        <Button
+          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          variant="ghost"
+          className="px-3 py-1 text-sm"
+        >
+          Previous
+        </Button>
+        
+        <span className="mx-2 text-sm text-gray-600 dark:text-gray-400">
+          Page {currentPage} of {totalPages || 1}
+        </span>
+        
+        <Button
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages || totalPages === 0}
+          variant="ghost"
+          className="px-3 py-1 text-sm"
+        >
+          Next
+        </Button>
+        <Button
+          onClick={() => setCurrentPage(totalPages)}
+          disabled={currentPage === totalPages || totalPages === 0}
+          variant="ghost"
+          className="px-3 py-1 text-sm"
+        >
+          Last
+        </Button>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -114,7 +190,9 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
               <option value="public">Public</option>
               <option value="pro-forma">Pro-forma</option>
             </select>
-            <Button onClick={fetchAudit} variant="ghost" disabled={loading}>{loading ? 'Refreshing…' : 'Refresh'}</Button>
+            <Button onClick={fetchAudit} variant="ghost" disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </Button>
             <Button onClick={() => setPage('decision')} variant="ghost">Back</Button>
           </div>
         }
@@ -123,7 +201,7 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
       </SectionTitle>
 
       <div className="grid grid-cols-4 gap-4">
-        <Stat label="Entries" value={String(filtered.length)} />
+        <Stat label="Entries" value={String(totalItems)} />
         <Stat label="Snapshots" value={String(snapshotKeys.length)} />
         <Stat label="Mode" value={modeFilter === 'all' ? 'Any' : modeFilter} />
         <Stat label="Errors" value={error ? '1' : '0'} tone={error ? 'warn' : 'good'} />
@@ -227,6 +305,9 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
           </Card>
         );
       })}
+
+      {/* Pagination Controls */}
+      {totalItems > 5 && <PaginationControls />}
 
       <div className="flex justify-end gap-2">
         <Button onClick={() => setPage('decision')} variant="primary">Back to Decision</Button>
