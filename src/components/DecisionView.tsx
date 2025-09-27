@@ -34,7 +34,7 @@ interface Candidate {
       var_95?: number;
       price_distribution?: { mean?: number };
     };
-    nav?: { avg_nav?: number; erosion_prob?: number; cvar?: number };
+    nav?: { avg_nav?: number; erosion_prob?: number; cvar?: number; nav_paths?: number[] };
     roe?: { avg_roe?: number; sharpe?: number };
     runway?: { dist_mean?: number };
     cure_success_rate?: number;
@@ -54,6 +54,7 @@ interface DecisionViewProps {
     hedge_pnl_avg?: number;
     distribution_metrics?: { bull_market_prob?: number };
     scenario_metrics?: { [key: string]: { nav?: number } };
+    metrics?: any;
   };
   assumptions: { LTV_Cap?: number; LoanPrincipal?: number };
   setPage: (page: string) => void;
@@ -64,7 +65,7 @@ interface DecisionViewProps {
   fetchAudit: () => Promise<void>;
   auditTrail: any[];
   isExporting?: boolean;
-  snapshotId?: string | null; // Updated to match App.tsx
+  snapshotId?: string | null;
 }
 
 function DecisionView({
@@ -96,6 +97,27 @@ function DecisionView({
   const dil = results?.metrics?.dilution || results?.dilution || {};
   const roe = results?.metrics?.roe || results?.roe || {};
   const run = results?.metrics?.runway || results?.runway || {};
+
+  // Get nav_paths data - handle both single path (1D array) and multiple paths (2D array)
+  const navPaths = results?.metrics?.nav?.nav_paths || results?.nav?.nav_paths || [];
+  const ltvPaths = results?.metrics?.ltv?.ltv_paths || results?.ltv?.ltv_paths || [];
+  const dilutionPaths = results?.metrics?.dilution?.dilution_paths || results?.dilution?.dilution_paths || [];
+
+  // Prepare chart data - handle single path case
+  const navChartData = Array.isArray(navPaths) && navPaths.length > 0 
+    ? navPaths.map((value: number, index: number) => ({ time: index, nav: value }))
+    : [];
+
+  const ltvChartData = Array.isArray(ltvPaths) && ltvPaths.length > 0
+    ? ltvPaths.map((value: number, index: number) => ({ index: index, ltv: value }))
+    : [];
+
+  const dilutionChartData = Array.isArray(dilutionPaths) && dilutionPaths.length > 0
+    ? dilutionPaths.map((d: number, i: number) => ({
+        debt: (assumptions.LoanPrincipal || 0) * (i / (ltvPaths.length || 1)),
+        dil: d,
+      }))
+    : [];
 
   // Holistic Comparison Table with guarded metrics
   const comparisonData = candidates.map((cand: Candidate, i: number) => {
@@ -134,7 +156,7 @@ function DecisionView({
     if (ts?.slippage != null && cand.params?.structure === 'ATM') row['Slippage'] = pct(ts.slippage);
     if (cand.params?.structure === 'Convertible' && cand.params?.premium != null) row['Premium'] = cand.params.premium;
     if (ts?.profit_margin != null) row['Profit Margin'] = pct(ts.profit_margin);
-    if (ts?.roe_uplift != null) row['ROE Uplift'] = pct(ts.roe_uplift / 100);
+    if (ts?.roe_uplift != null) row['ROE Uplift'] = pct((ts.roe_uplift ?? 0) / 100);
     if (ts?.savings != null) row['Savings'] = formatMoney(ts.savings);
     return row;
   });
@@ -260,35 +282,47 @@ function DecisionView({
         })}
       </div>
       <div className="grid grid-cols-2 gap-4">
+        {/* NAV Chart - Single Clean Line */}
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={(results?.metrics?.nav?.nav_paths || results?.nav?.nav_paths || []).map((v: number, i: number) => ({ time: i, nav: v }))}>
+            <LineChart data={navChartData}>
               <XAxis dataKey="time" tickFormatter={num} />
               <YAxis tickFormatter={formatMoney} />
               <Tooltip formatter={formatMoney} />
-              <Line type="monotone" dataKey="nav" stroke="#8884d8" />
+              <Line 
+                type="monotone" 
+                dataKey="nav" 
+                stroke="#10b981" 
+                strokeWidth={3}
+                dot={false}
+                activeDot={{ r: 4, fill: "#10b981" }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
+        
+        {/* LTV Chart - Single Clean Area */}
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={(results?.metrics?.ltv?.ltv_paths || results?.ltv?.ltv_paths || []).map((ltv: number, i: number) => ({ index: i, ltv }))}>
+            <AreaChart data={ltvChartData}>
               <XAxis dataKey="index" hide />
               <YAxis tickFormatter={pct} />
               <Tooltip formatter={pct} />
-              <Area type="monotone" dataKey="ltv" stroke="#82ca9d" fill="#82ca9d" />
+              <Area 
+                type="monotone" 
+                dataKey="ltv" 
+                stroke="#82ca9d" 
+                fill="#82ca9d" 
+                fillOpacity={0.3}
+              />
               <ReferenceLine y={assumptions.LTV_Cap || 0} stroke="red" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
+        
         <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <ScatterChart
-              data={(results?.metrics?.dilution?.dilution_paths || results?.dilution?.dilution_paths || []).map((d: number, i: number) => ({
-                debt: (assumptions.LoanPrincipal || 0) * (i / ((results?.metrics?.ltv?.ltv_paths || results?.ltv?.ltv_paths || []).length || 1)),
-                dil: d,
-              }))}
-            >
+            <ScatterChart data={dilutionChartData}>
               <XAxis type="number" dataKey="debt" name="Debt" tickFormatter={formatMoney} />
               <YAxis type="number" dataKey="dil" name="Dilution" tickFormatter={pct} />
               <Tooltip formatter={pct} />
