@@ -18,6 +18,10 @@ import {
   ZAxis,
   Legend
 } from 'recharts';
+import FanChart from "./charts/FanChart";
+import HistogramWithThreshold from "./charts/HistogramWithThreshold";
+import TornadoChart, { SensitivityItem } from "./charts/TornadoChart";
+import RunwayBox from "./charts/RunwayBox";
 
 interface Candidate {
   type: string;
@@ -326,70 +330,38 @@ function DecisionView({
         })}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* NAV Fan */}
         <Card>
-          <SectionTitle>NAV Distribution</SectionTitle>
-          <ResponsiveContainer width="100%" height={300} minHeight={200}>
-            <AreaChart
-              data={prepareNavData(nav.nav_paths || [])}
-              margin={{ top: 10, right: 10, left: 10, bottom: 20 }} 
-            >
-              <XAxis
-                dataKey="nav"
-                tickFormatter={(value) => formatMoney(value, 0)}
-                label={{ value: 'NAV (USD)', position: 'bottom', offset: 0, fontSize: '12px' }}
-                tick={{ fontSize: '12px' }}
-              />
-              <YAxis
-                tickFormatter={(value) => `${value}%`}
-                label={{ 
-                  value: 'Cumulative Probability (%)', 
-                  angle: -90, 
-                  position: 'insideLeft', 
-                  offset: -5,
-                  style: { textAnchor: 'middle', fontSize: '12px' }
-                }}
-                tick={{ fontSize: '12px' }}
-              />
-              <Tooltip formatter={(value: number) => formatMoney(value, 0)} />
-              <Area type="monotone" dataKey="cumulative" stroke="#10b981" fill="#10b981" />
-            </AreaChart>
-          </ResponsiveContainer>
-          <p className="text-xs text-gray-500 mt-2">
-            Shows cumulative distribution of simulated terminal NAV values (erosion prob: {pct(nav.erosion_prob ?? 0)}).
-          </p>
+          <SectionTitle>NAV Fan (Median, 50%, 90%)</SectionTitle>
+          <FanChart
+  navMatrix={(nav as any).nav_matrix}
+  navPaths={nav.nav_paths}
+  yLabel="NAV ($)"
+  showBaseline={(nav as any)?.baseline}
+/>
         </Card>
+        {/* LTV Histogram with Cap */}
         <Card>
-          <SectionTitle>LTV Ratio Distribution</SectionTitle>
-          <ResponsiveContainer width="100%" height={300} minHeight={200}>
-            <LineChart
-              data={prepareLtvData(ltv.ltv_paths || [])}
-              margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
-            >
-              <XAxis
-                dataKey="ltv"
-                tickFormatter={(value) => pct(value)}
-                label={{ value: 'LTV Ratio', position: 'bottom', offset: 0, fontSize: '12px' }}
-                tick={{ fontSize: '12px' }}
-              />
-              <YAxis
-                tickFormatter={(value) => `${value}%`}
-                label={{ 
-                  value: 'Cumulative Probability (%)', 
-                  angle: -90, 
-                  position: 'insideLeft', 
-                  offset: -5,
-                  style: { textAnchor: 'middle', fontSize: '12px' }
-                }}
-                tick={{ fontSize: '12px' }}
-              />
-              <Tooltip formatter={(value: number) => pct(value)} />
-              <Line type="monotone" dataKey="cumulative" stroke="#8884d8" dot={false} />
-              <ReferenceLine x={assumptions.LTV_Cap ?? 0} stroke="red" label={{ value: 'LTV Cap', fontSize: '12px' }} />
-            </LineChart>
-          </ResponsiveContainer>
-          <p className="text-xs text-gray-500 mt-2">
-            Shows cumulative distribution of simulated terminal LTV ratios (exceed prob: {pct(ltv.exceed_prob ?? 0)}).
-          </p>
+          <SectionTitle>LTV Distribution</SectionTitle>
+          <HistogramWithThreshold
+            ltvSamples={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "number" ? ltv.ltv_paths as number[] : undefined}
+ltvObjects={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "object" ? (ltv.ltv_paths as { index?: number; ltv: number }[]) : undefined}
+            cap={assumptions.LTV_Cap ?? 0.7}
+            bins={24}
+          />
+        </Card>
+        {/* Sensitivity Tornado (NAV) */}
+        <Card>
+          <SectionTitle>Key Drivers</SectionTitle>
+          <TornadoChart
+            metric="NAV"
+            sensitivities={(results.sensitivities as SensitivityItem[]) || []}
+          />
+        </Card>
+        {/* Runway Distribution (requires array) */}
+        <Card>
+          <SectionTitle>Runway Distribution</SectionTitle>
+          <RunwayBox runwayMonths={(run as any)?.paths_months} />
         </Card>
       </div>
       <Card>
@@ -397,7 +369,7 @@ function DecisionView({
         <ResponsiveContainer width="100%" height={300} minHeight={200}>
           <ScatterChart
             data={prepareDilutionVsDebtData(candidates)}
-            margin={{ top: 30, right: 10, left: 10, bottom: 20 }}
+            margin={{ top: 10, right: 10, left: 10, bottom: 20 }}
           >
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
