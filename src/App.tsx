@@ -1,14 +1,73 @@
-// App.tsx
 import React, { useEffect, useMemo, useState } from 'react';
+import { createMachine, assign } from 'xstate';
+import { useMachine } from '@xstate/react';
+import { debounce } from 'lodash';
+import { ToastContainer, toast } from 'react-toastify';
 import Landing from './pages/Landing';
 import Assumptions from './pages/Assumptions';
 import DecisionView from './components/DecisionView';
 import AuditPanel from './components/AuditPanel';
 import { Button } from './components/Primitives';
 import { API } from './utils';
-import { debounce } from 'lodash';
-import { Machine, interpret } from 'xstate';
-import { ToastContainer, toast } from 'react-toastify';
+
+// Define the machine's context type
+interface MachineContext {
+  progress: number;
+}
+
+// Define the machine's event types
+type MachineEvent =
+  | { type: 'RUN' }
+  | { type: 'LOCKED' }
+  | { type: 'SUCCESS' }
+  | { type: 'ERROR' }
+  | { type: 'RETRY' };
+
+// Define state machine outside the component with proper typing
+const runModelMachine = createMachine({
+  id: 'runModel',
+  initial: 'idle',
+  context: { progress: 0 } as MachineContext,
+  types: {} as {
+    context: MachineContext;
+    events: MachineEvent;
+  },
+  states: {
+    idle: {
+      on: { RUN: 'locking' },
+    },
+    locking: {
+      on: {
+        LOCKED: 'running',
+        ERROR: 'error',
+      },
+      after: {
+        500: {
+          actions: assign({
+            progress: () => 30,
+          }),
+        },
+      },
+    },
+    running: {
+      on: {
+        SUCCESS: 'success',
+        ERROR: 'error',
+      },
+      after: {
+        200: {
+          actions: assign({
+            progress: () => 70,
+          }),
+        },
+      },
+    },
+    success: { type: 'final' },
+    error: {
+      on: { RETRY: 'locking' },
+    },
+  },
+});
 
 export default function App() {
   const [page, setPage] = useState('landing');
@@ -27,6 +86,14 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [isTickerLoading, setIsTickerLoading] = useState(false);
 
+  // Initialize state machine
+  const [state, send] = useMachine(runModelMachine);
+
+  // Sync machine's progress with React state
+  useEffect(() => {
+    setProgress(state.context.progress);
+  }, [state.context.progress]);
+
   // Handle dark mode class on html element
   useEffect(() => {
     if (dark) {
@@ -36,25 +103,7 @@ export default function App() {
     }
   }, [dark]);
 
-  const runModelMachine = Machine({
-    id: 'runModel',
-    initial: 'idle',
-    states: {
-      idle: { on: { RUN: 'locking' } },
-      locking: { on: { LOCKED: 'running', ERROR: 'error' }, after: { 500: { actions: () => setProgress(30) } } },
-      running: { on: { SUCCESS: 'success', ERROR: 'error' }, after: { 200: { actions: () => setProgress(70) } } },
-      success: { type: 'final' },
-      error: { on: { RETRY: 'locking' } },
-    },
-  });
-
-  const [machineState, setMachineState] = useState('idle');
-  const service = useMemo(() => interpret(runModelMachine).onTransition((state) => setMachineState(String(state.value))), []);
-  useEffect(() => {
-    service.start();
-    return () => service.stop();
-  }, [service]);
-
+  // Initialize assumptions and BTC price
   useEffect(() => {
     const initialize = async () => {
       try {
@@ -117,20 +166,16 @@ export default function App() {
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     if (selectedFile.size > MAX_FILE_SIZE) {
       toast.error(`File too large (max ${MAX_FILE_SIZE / (1024 * 1024)}MB)`);
       e.target.value = '';
       return;
     }
-
     setFile(selectedFile);
-
     const formData = new FormData();
     formData.append('file', selectedFile);
     if (ticker) formData.append('ticker', ticker);
-
     const toastId = toast.loading(`Uploading ${selectedFile.name}...`);
     try {
       const res = await fetch(API('/api/upload_sec_data/'), {
@@ -140,19 +185,16 @@ export default function App() {
       if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-
       setAssumptions((prev: any) => ({
         ...prev,
         ...data,
       }));
-
       toast.update(toastId, {
         render: `Successfully uploaded and parsed ${selectedFile.name}`,
         type: 'success',
         isLoading: false,
         autoClose: 3000,
       });
-
       e.target.value = '';
       setFile(null);
     } catch (err: any) {
@@ -167,9 +209,8 @@ export default function App() {
 
   const handleCalculate = async () => {
     setProgress(10); // Start progress immediately
-    service.send('RUN');
+    send({ type: 'RUN' });
     try {
-      setProgress(30);
       const res = await fetch(API('/api/lock_snapshot/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -179,7 +220,7 @@ export default function App() {
       const data = await res.json();
       setSnapshotId(data.snapshot_id);
       setProgress(50);
-      service.send('LOCKED');
+      send({ type: 'LOCKED' });
       const calcRes = await fetch(API('/api/calculate/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,10 +230,10 @@ export default function App() {
       const calcData = await calcRes.json();
       setResults(calcData);
       setProgress(100);
-      service.send('SUCCESS');
+      send({ type: 'SUCCESS' });
       setPage('decision');
     } catch (e: any) {
-      service.send('ERROR');
+      send({ type: 'ERROR' });
       setError(e.message);
       setProgress(0);
     } finally {
