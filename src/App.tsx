@@ -25,7 +25,7 @@ export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
-  const [isTickerLoading, setIsTickerLoading] = useState(false); // New loading state
+  const [isTickerLoading, setIsTickerLoading] = useState(false);
 
   // Handle dark mode class on html element
   useEffect(() => {
@@ -47,6 +47,7 @@ export default function App() {
       error: { on: { RETRY: 'locking' } },
     },
   });
+
   const [machineState, setMachineState] = useState('idle');
   const service = useMemo(() => interpret(runModelMachine).onTransition((state) => setMachineState(String(state.value))), []);
   useEffect(() => {
@@ -92,7 +93,7 @@ export default function App() {
       if (data.error) throw new Error(data.error);
       setAssumptions((prev: any) => ({
         ...prev,
-        ...data, // Update assumptions with fetched SEC data
+        ...data,
       }));
       toast.update(toastId, {
         render: `Successfully fetched SEC data for ${ticker}`,
@@ -117,11 +118,10 @@ export default function App() {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    // Client-side validation: max 5MB (adjust based on your backend DATA_UPLOAD_MAX_MEMORY_SIZE)
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
     if (selectedFile.size > MAX_FILE_SIZE) {
       toast.error(`File too large (max ${MAX_FILE_SIZE / (1024 * 1024)}MB)`);
-      e.target.value = ''; // Clear input
+      e.target.value = '';
       return;
     }
 
@@ -129,7 +129,7 @@ export default function App() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
-    if (ticker) formData.append('ticker', ticker); // Optional, if in 'public' mode
+    if (ticker) formData.append('ticker', ticker);
 
     const toastId = toast.loading(`Uploading ${selectedFile.name}...`);
     try {
@@ -143,7 +143,7 @@ export default function App() {
 
       setAssumptions((prev: any) => ({
         ...prev,
-        ...data, // Populate assumptions with parsed data (e.g., initial_equity_value, etc.)
+        ...data,
       }));
 
       toast.update(toastId, {
@@ -153,7 +153,6 @@ export default function App() {
         autoClose: 3000,
       });
 
-      // Clear the file input after success
       e.target.value = '';
       setFile(null);
     } catch (err: any) {
@@ -167,8 +166,10 @@ export default function App() {
   };
 
   const handleCalculate = async () => {
+    setProgress(10); // Start progress immediately
     service.send('RUN');
     try {
+      setProgress(30);
       const res = await fetch(API('/api/lock_snapshot/'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -177,6 +178,7 @@ export default function App() {
       if (!res.ok) throw new Error('Lock failed');
       const data = await res.json();
       setSnapshotId(data.snapshot_id);
+      setProgress(50);
       service.send('LOCKED');
       const calcRes = await fetch(API('/api/calculate/'), {
         method: 'POST',
@@ -186,13 +188,15 @@ export default function App() {
       if (!calcRes.ok) throw new Error('Calculation failed');
       const calcData = await calcRes.json();
       setResults(calcData);
+      setProgress(100);
       service.send('SUCCESS');
       setPage('decision');
     } catch (e: any) {
       service.send('ERROR');
       setError(e.message);
+      setProgress(0);
     } finally {
-      setTimeout(() => setProgress(0), 500);
+      setTimeout(() => setProgress(0), 1000);
     }
   };
 
@@ -263,7 +267,7 @@ export default function App() {
     }
   };
 
-  const isLoading = ['locking', 'running'].includes(machineState);
+  const isLoading = progress > 0 && progress < 100;
 
   return (
     <div className="min-h-screen p-6 bg-slate-100 dark:bg-slate-900 font-ibm-plex-sans">

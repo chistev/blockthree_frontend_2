@@ -1,4 +1,3 @@
-// Assumptions.tsx
 import React from 'react';
 import { Card, SectionTitle, Pill, Button } from '../components/Primitives';
 import AssumptionGrid from '../components/AssumptionGrid';
@@ -20,6 +19,7 @@ export default function Assumptions({
   error,
   handleTickerSubmit,
 }: any) {
+
   const groups = [
     { title: 'BTC Parameters', fields: ['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'IssuePrice'] },
     { title: 'Model Parameters', fields: ['mu', 'sigma', 't', 'risk_free_rate', 'expected_return_btc', 'delta'] },
@@ -38,9 +38,9 @@ export default function Assumptions({
       'long_run_volatility',
       'min_profit_margin',
       'use_variance_reduction',
-      'jump_intensity', // Added
-      'jump_mean', // Added
-      'jump_volatility', // Added
+      'jump_intensity',
+      'jump_mean',
+      'jump_volatility',
     ],
   };
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -92,8 +92,34 @@ export default function Assumptions({
           </div>
         )}
       </Card>
-      <Button onClick={handleCalculate} disabled={isLoading} variant="primary">
-        {isLoading ? `Running... ${progress}%` : 'Run Models'}
+      <Button onClick={handleCalculate} disabled={isLoading} variant="primary" className="flex items-center justify-center gap-2">
+        {isLoading ? (
+          <>
+            <svg
+              className="animate-spin h-5 w-5 text-white"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
+            </svg>
+            <span>Running Models ({progress}%)</span>
+          </>
+        ) : (
+          'Run Models'
+        )}
       </Button>
       {snapshotId && <Pill tone="green">Snapshot: {snapshotId}</Pill>}
       {error && <p className="text-red-500 text-[14px]">{error}</p>}
