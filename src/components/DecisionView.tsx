@@ -71,6 +71,7 @@ interface DecisionViewProps {
     distribution_metrics?: { bull_market_prob?: number };
     scenario_metrics?: { [key: string]: { nav?: number } };
     metrics?: any;
+    snapshot_id?: string;
   };
   assumptions: { LTV_Cap?: number; LoanPrincipal?: number };
   setPage: (page: string) => void;
@@ -126,7 +127,21 @@ function prepareDilutionVsDebtData(candidates: Candidate[]): {
 }
 
 // Custom Tooltip component for stable positioning
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface CustomTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: {
+      dilution: number;
+      debt: number;
+      type: string;
+      structure: string;
+      amount: number;
+    };
+  }>;
+  label?: any;
+}
+
+const CustomTooltip = ({ active, payload }: CustomTooltipProps) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -139,6 +154,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
   }
   return null;
+};
+
+type ComparisonRow = {
+  [key: string]: string | number;
 };
 
 function DecisionView({
@@ -170,8 +189,7 @@ function DecisionView({
   const roe = results?.metrics?.roe || results?.roe || {};
   const run = results?.metrics?.runway || results?.runway || {};
 
-  const comparisonData = candidates.map((cand: Candidate, i: number) => {
-    console.log(`Candidate ${i} metrics.nav.avg_nav:`, cand?.metrics?.nav?.avg_nav);
+  const comparisonData: ComparisonRow[] = candidates.map((cand: Candidate, i: number) => {
     const m = cand?.metrics || {};
     const nav = m.nav || {};
     const ltv = m.ltv || {};
@@ -181,7 +199,7 @@ function DecisionView({
     const ts = m.term_sheet || {};
     const sm = m.scenario_metrics || {};
     const dm = m.distribution_metrics || {};
-    const row: any = {
+    const row: ComparisonRow = {
       Type: cand.type,
       Structure: cand.params?.structure ?? '',
     };
@@ -221,18 +239,19 @@ function DecisionView({
           label="NAV Avg"
           value={formatMoney(nav.avg_nav ?? 0)}
           hint={nav.erosion_prob != null ? `Erosion: ${pct(nav.erosion_prob)}` : undefined}
-          tone={nav.erosion_prob && nav.erosion_prob > 0.1 ? 'warn' : 'good'}
+          tone={nav.erosion_prob && nav.erosion_prob > 0.1 ? 'amber' : 'good'}
         />
         <Stat
           label="LTV Breach"
           value={pct(ltv.exceed_prob ?? 0)}
           hint={nav.cvar != null ? `CVaR: ${formatMoney(nav.cvar)}` : undefined}
-          tone={ltv.exceed_prob && ltv.exceed_prob > 0.1 ? 'warn' : 'good'}
+          tone={ltv.exceed_prob && ltv.exceed_prob > 0.1 ? 'amber' : 'good'}
         />
         <Stat
           label="Dilution Avg"
           value={pct(dil.avg_dilution ?? 0)}
           hint={dil.base_dilution != null ? `Base: ${pct(dil.base_dilution)}` : undefined}
+          tone="neutral"
         />
         <Stat
           label="ROE Avg"
@@ -244,18 +263,22 @@ function DecisionView({
           label="Runway Mean"
           value={months(run.dist_mean ?? 0)}
           hint={run.p95 != null ? `P95: ${months(run.p95)}` : undefined}
+          tone="neutral"
         />
         <Stat
           label="Cure Success"
           value={pct(results?.metrics?.cure_success_rate ?? results?.cure_success_rate ?? 0)}
+          tone="neutral"
         />
         <Stat
           label="Hedge PnL"
           value={formatMoney(results?.metrics?.hedge_pnl_avg ?? results?.hedge_pnl_avg ?? 0)}
+          tone="neutral"
         />
         <Stat
           label="Bull Prob"
           value={pct(results?.metrics?.distribution_metrics?.bull_market_prob ?? results?.distribution_metrics?.bull_market_prob ?? 0)}
+          tone="neutral"
         />
       </div>
       <div className="overflow-x-auto">
@@ -316,7 +339,7 @@ function DecisionView({
               <p className="text-xs sm:text-sm">ROE Uplift: {pct((term_sheet.roe_uplift ?? 0) / 100)}</p>
               <p className="text-xs sm:text-sm">Savings: {formatMoney(term_sheet.savings ?? 0)}</p>
               <div className="mt-2 flex items-center gap-2">
-                <Pill tone={risk.tone === 'red' ? 'red' : risk.tone === 'amber' ? 'amber' : 'green'}>{risk.pill}</Pill>
+                <Pill tone={risk.tone}>{risk.pill}</Pill>
                 {ltv.exceed_prob != null && (
                   <span className="text-xs text-gray-500">LTV&gt;Cap {pct(ltv.exceed_prob)}</span>
                 )}
@@ -330,39 +353,24 @@ function DecisionView({
         })}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* NAV Fan */}
         <Card>
           <SectionTitle>NAV Fan (Median, 50%, 90%)</SectionTitle>
           <FanChart
-  navMatrix={(nav as any).nav_matrix}
-  navPaths={nav.nav_paths}
-  yLabel="NAV ($)"
-  showBaseline={(nav as any)?.baseline}
-/>
+            navMatrix={(nav as any).nav_matrix}
+            navPaths={nav.nav_paths}
+            yLabel="NAV ($)"
+            showBaseline={(nav as any)?.baseline}
+          />
         </Card>
-        {/* LTV Histogram with Cap */}
         <Card>
           <SectionTitle>LTV Distribution</SectionTitle>
           <HistogramWithThreshold
             ltvSamples={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "number" ? ltv.ltv_paths as number[] : undefined}
-ltvObjects={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "object" ? (ltv.ltv_paths as { index?: number; ltv: number }[]) : undefined}
+            ltvObjects={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "object" ? (ltv.ltv_paths as { index?: number; ltv: number }[]) : undefined}
             cap={assumptions.LTV_Cap ?? 0.7}
             bins={24}
           />
         </Card>
-        {/* Sensitivity Tornado (NAV) */}
-        {/* <Card>
-          <SectionTitle>Key Drivers</SectionTitle>
-          <TornadoChart
-            metric="NAV"
-            sensitivities={(results.sensitivities as SensitivityItem[]) || []}
-          />
-        </Card> */}
-        {/* Runway Distribution (requires array) */}
-        {/* <Card>
-          <SectionTitle>Runway Distribution</SectionTitle>
-          <RunwayBox runwayMonths={(run as any)?.paths_months} />
-        </Card> */}
       </div>
       <Card>
         <SectionTitle>Dilution vs Debt Analysis</SectionTitle>
@@ -409,7 +417,7 @@ ltvObjects={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "object"
               name="Financing Options" 
               data={prepareDilutionVsDebtData(candidates)} 
               fill="#8884d8"
-              shape={(props) => {
+              shape={(props: any) => {
                 const { cx, cy, payload } = props;
                 const structure = payload.structure;
                 const fillColor = structure === 'ATM' ? '#8884d8' : 

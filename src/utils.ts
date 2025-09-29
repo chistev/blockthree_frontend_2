@@ -1,18 +1,19 @@
-// src/utils.ts
-// Old utilities
 export const API = (path: string) => `http://127.0.0.1:8000${path}`;
 
-export const classNames = (...xs: (string | boolean | undefined)[]) =>
+export const classNames = (...xs: (string | boolean | undefined)[]): string =>
   xs.filter(Boolean).join(' ');
 
 // Old formatters
-export const pct = (x: number | undefined | null, d = 2) => (x === 0 || !!x) ? `${(Number(x) * 100).toFixed(d)}%` : '—';
+export const pct = (x: number | undefined | null, d = 2): string => 
+  (x === 0 || !!x) ? `${(Number(x) * 100).toFixed(d)}%` : '—';
 
-export const num = (x: number | undefined | null) => (x === 0 || !!x) ? new Intl.NumberFormat().format(Number(x)) : '—';
+export const num = (x: number | undefined | null): string => 
+  (x === 0 || !!x) ? new Intl.NumberFormat().format(Number(x)) : '—';
 
-export const months = (x: number | undefined | null) => (x === 0 || !!x) ? `${Number(x).toFixed(1)} mo` : '—';
+export const months = (x: number | undefined | null): string => 
+  (x === 0 || !!x) ? `${Number(x).toFixed(1)} mo` : '—';
 
-export const formatMoney = (x: number | undefined | null, fd = 0) => {
+export const formatMoney = (x: number | undefined | null, fd = 0): string => {
   if (x === undefined || x === null) return '—';
  
   // Ensure fd is a valid integer between 0 and 20
@@ -28,21 +29,27 @@ export const formatMoney = (x: number | undefined | null, fd = 0) => {
 // Risk thresholds
 export const RISK = { ltv: { green: 0.05, amber: 0.10 }, dil: { green: 0.08, amber: 0.12 } };
 
-export function riskTone({ ltvProb, avgDilution }: { ltvProb?: number, avgDilution?: number }) {
-  let tone: 'good' | 'amber' | 'red' = 'good';
+export function riskTone({ ltvProb, avgDilution }: { ltvProb?: number; avgDilution?: number }): { tone: 'green' | 'amber' | 'red'; pill: string } {
+  let tone: 'green' | 'amber' | 'red' = 'green';
   let pill = 'Within guardrails';
   if (ltvProb !== undefined) {
     if (ltvProb > RISK.ltv.amber) { tone = 'red'; pill = 'LTV breach risk'; }
     else if (ltvProb >= RISK.ltv.green) { tone = 'amber'; pill = 'Moderate LTV risk'; }
   }
   if (avgDilution !== undefined) {
-    if (avgDilution > RISK.dil.amber) { tone = tone === 'red' ? 'red' : 'amber'; pill = tone === 'red' ? pill : 'Dilution risk'; }
-    else if (avgDilution >= RISK.dil.green && tone === 'good') { tone = 'amber'; pill = 'Dilution risk'; }
+    if (avgDilution > RISK.dil.amber) { 
+      tone = tone === 'red' ? 'red' : 'amber'; 
+      pill = tone === 'red' ? pill : 'Dilution risk'; 
+    }
+    else if (avgDilution >= RISK.dil.green && tone === 'green') { 
+      tone = 'amber'; 
+      pill = 'Dilution risk'; 
+    }
   }
   return { tone, pill };
 }
 
-export function structureLabel(ts: any = {}) {
+export function structureLabel(ts: any = {}): { label: string; tone: 'gray' | 'blue' | 'amber' | 'green' | 'violet' } {
   const s = (ts?.structure || ts?.type || '').toLowerCase();
   if (s.includes('atm')) return { label: 'ATM', tone: 'blue' };
   if (s.includes('pipe')) return { label: 'PIPE', tone: 'amber' };
@@ -57,7 +64,7 @@ export function structureLabel(ts: any = {}) {
 
 // New utilities from charts/utils.ts
 // Basic quantile (expects sorted ascending input)
-export function quantile(sorted: number[], q: number) {
+export function quantile(sorted: number[], q: number): number {
   if (sorted.length === 0) return NaN;
   const pos = (sorted.length - 1) * q;
   const base = Math.floor(pos);
@@ -66,7 +73,7 @@ export function quantile(sorted: number[], q: number) {
 }
 
 // Compute quantiles (array) for each time index across a 2D matrix [paths][steps]
-export function quantilesByStep(matrix: number[][], qs: number[]) {
+export function quantilesByStep(matrix: number[][], qs: number[]): Record<string, number[]> {
   const steps = matrix[0]?.length ?? 0;
   const out: Record<string, number[]> = {};
   qs.forEach((q) => (out[q.toString()] = new Array(steps).fill(NaN)));
@@ -85,8 +92,8 @@ export function quantilesByStep(matrix: number[][], qs: number[]) {
 }
 
 // Simple histogram binning
-export function makeHistogram(values: number[], binCount = 20) {
-  if (!values?.length) return { bins: [] as { x0: number; x1: number; n: number }[], min: 0, max: 0 };
+export function makeHistogram(values: number[], binCount = 20): { bins: { x0: number; x1: number; n: number }[]; min: number; max: number } {
+  if (!values?.length) return { bins: [], min: 0, max: 0 };
   const min = Math.min(...values);
   const max = Math.max(...values);
   if (min === max) return { bins: [{ x0: min, x1: max, n: values.length }], min, max };
@@ -102,7 +109,7 @@ export function makeHistogram(values: number[], binCount = 20) {
 }
 
 // Box/whisker stats
-export function boxStats(values: number[]) {
+export function boxStats(values: number[]): { min: number; q1: number; median: number; q3: number; max: number } | null {
   if (!values?.length) return null;
   const s = [...values].sort((a, b) => a - b);
   return {
