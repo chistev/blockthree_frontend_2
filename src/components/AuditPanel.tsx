@@ -231,14 +231,14 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
                 <p className="text-[12px] text-gray-500">First: {formatDate(head.timestamp)} · Last: {formatDate(last.timestamp)}</p>
               </div>
               <div className="flex items-center gap-2">
-                <Pill tone={head.mode === 'public' ? 'green' : head.mode === 'pro-forma' ? 'amber' : 'slate'}>
+                <Pill tone={head.mode === 'public' ? 'green' : head.mode === 'pro-forma' ? 'amber' : 'gray'}>
                   {head.mode || 'mode?'}
                 </Pill>
                 {head.code_hash && (
-                  <Pill tone="slate">code: {String(head.code_hash).slice(0, 8)}</Pill>
+                  <Pill tone="gray">code: {String(head.code_hash).slice(0, 8)}</Pill>
                 )}
                 {typeof head.seed === 'number' && (
-                  <Pill tone="slate">seed: {head.seed}</Pill>
+                  <Pill tone="gray">seed: {head.seed}</Pill>
                 )}
               </div>
             </div>
