@@ -17,9 +17,6 @@ yarn-error.log*
 .vscode/
 .idea/
 
-# TypeScript
-tsconfig.json
-
 # Tailwind CSS config
 tailwind.config.cjs
 postcss.config.cjs
