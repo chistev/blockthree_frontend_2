@@ -351,18 +351,18 @@ ltvObjects={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "object"
           />
         </Card>
         {/* Sensitivity Tornado (NAV) */}
-        <Card>
+        {/* <Card>
           <SectionTitle>Key Drivers</SectionTitle>
           <TornadoChart
             metric="NAV"
             sensitivities={(results.sensitivities as SensitivityItem[]) || []}
           />
-        </Card>
+        </Card> */}
         {/* Runway Distribution (requires array) */}
-        <Card>
+        {/* <Card>
           <SectionTitle>Runway Distribution</SectionTitle>
           <RunwayBox runwayMonths={(run as any)?.paths_months} />
-        </Card>
+        </Card> */}
       </div>
       <Card>
         <SectionTitle>Dilution vs Debt Analysis</SectionTitle>
