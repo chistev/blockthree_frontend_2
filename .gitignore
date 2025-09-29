@@ -13,10 +13,6 @@ yarn-error.log*
 /dist
 /build
 
-# Package manager files
-package-lock.json
-package.json
-
 # IDE/editor config files
 .vscode/
 .idea/
