@@ -49,14 +49,14 @@ export default function Assumptions({
     }
   };
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 px-4 sm:px-6 md:px-0">
       <SectionTitle right={<Pill tone={mode === 'public' ? 'blue' : mode === 'private' ? 'gray' : 'violet'}>Mode: {mode}</Pill>}>
         Assumptions
       </SectionTitle>
       <select
         value={mode}
         onChange={(e) => setMode(e.target.value)}
-        className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600"
+        className="w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="public">Public (SEC)</option>
         <option value="private">Private</option>
@@ -68,21 +68,21 @@ export default function Assumptions({
           value={ticker}
           onChange={(e) => setTicker(e.target.value)}
           onKeyDown={onKeyDown}
-          className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600"
+          className="w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       )}
       <input
         type="file"
         onChange={handleUpload}
-        className="w-full rounded-lg border px-3 py-2 bg-white dark:bg-zinc-800 dark:border-zinc-600"
+        className="w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:border-zinc-600 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-zinc-700 dark:file:text-zinc-100 dark:hover:file:bg-zinc-600"
       />
       {groups.map((g: any) => (
-        <Card key={g.title}>
+        <Card key={g.title} className="p-4">
           <SectionTitle>{g.title}</SectionTitle>
           <AssumptionGrid assumptions={assumptions} setAssumptions={setAssumptions} groupFields={g.fields} />
         </Card>
       ))}
-      <Card>
+      <Card className="p-4">
         <div className="cursor-pointer" onClick={() => setAdvancedOpen(!advancedOpen)}>
           <SectionTitle>{advancedOpen ? 'Hide' : 'Show'} Advanced Parameters</SectionTitle>
         </div>
@@ -92,7 +92,7 @@ export default function Assumptions({
           </div>
         )}
       </Card>
-      <Button onClick={handleCalculate} disabled={isLoading} variant="primary" className="flex items-center justify-center gap-2">
+      <Button onClick={handleCalculate} disabled={isLoading} variant="primary" className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold">
         {isLoading ? (
           <>
             <svg
@@ -121,8 +121,12 @@ export default function Assumptions({
           'Run Models'
         )}
       </Button>
-      {snapshotId && <Pill tone="green">Snapshot: {snapshotId}</Pill>}
-      {error && <p className="text-red-500 text-[14px]">{error}</p>}
+      {snapshotId && (
+        <div className="mt-4">
+          <Pill tone="green">Snapshot: {snapshotId}</Pill>
+        </div>
+      )}
+      {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
     </div>
   );
 }

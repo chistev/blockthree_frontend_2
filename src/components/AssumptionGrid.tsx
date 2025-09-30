@@ -1,4 +1,3 @@
-// AssumptionGrid.tsx
 import React, { useState } from 'react';
 import { classNames } from '../utils';
 
@@ -59,9 +58,9 @@ const tooltips: { [key: string]: string } = {
   long_run_volatility: "Long-run volatility level in Heston model simulations.",
   min_profit_margin: "Minimum acceptable profit margin for optimization.",
   use_variance_reduction: "Enable variance reduction techniques in Monte Carlo simulations.",
-  jump_intensity: "Annual intensity (lambda) of jumps in the Bitcoin price process.", // Added
-  jump_mean: "Mean of the jump size (log return) in the Bitcoin price process.", // Added
-  jump_volatility: "Volatility of the jump size in the Bitcoin price process.", // Added
+  jump_intensity: "Annual intensity (lambda) of jumps in the Bitcoin price process.",
+  jump_mean: "Mean of the jump size (log return) in the Bitcoin price process.",
+  jump_volatility: "Volatility of the jump size in the Bitcoin price process.",
 };
 
 export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
@@ -85,13 +84,13 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     // Common label component with question mark icon and tooltip
     const LabelWithTooltip = () => (
       <div className="flex items-center gap-2">
-        <span className="text-[14px] text-gray-600 dark:text-gray-300">{k}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-300">{k}</span>
         {tooltips[k] && (
           <div className="relative group">
-            <span className="text-gray-500 dark:text-gray-400 cursor-help" aria-label={`Tooltip for ${k}`}>
+            <span className="text-gray-500 dark:text-gray-400 cursor-help text-sm" aria-label={`Tooltip for ${k}`}>
               ?
             </span>
-            <div className="absolute z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-sm rounded-md py-2 px-3 w-64 -left-4 top-6">
+            <div className="absolute z-10 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 text-xs rounded-md py-2 px-3 w-48 sm:w-64 -left-4 top-6">
               {tooltips[k]}
             </div>
           </div>
@@ -101,13 +100,13 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     // Special case for hedge_policy
     if (k === 'hedge_policy') {
       return (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <select
             value={inputValue}
             onChange={handleChange}
             onBlur={handleCommit}
-            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-describedby={`${k}-tooltip`}
           >
             <option value="none">None</option>
@@ -119,13 +118,13 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     // Special case for objective_preset
     if (k === 'objective_preset') {
       return (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <select
             value={inputValue}
             onChange={handleChange}
             onBlur={handleCommit}
-            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-describedby={`${k}-tooltip`}
           >
             <option value="Defensive">Defensive</option>
@@ -138,13 +137,13 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     // Special case for deribit_iv_source
     if (k === 'deribit_iv_source') {
       return (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <select
             value={inputValue}
             onChange={handleChange}
             onBlur={handleCommit}
-            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-describedby={`${k}-tooltip`}
           >
             <option value="manual">Manual</option>
@@ -156,13 +155,13 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     // Read-only field for BTC_current_market_price
     if (k === 'BTC_current_market_price') {
       return (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <input
             type="number"
             value={inputValue}
             readOnly
-            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-gray-100 dark:bg-zinc-900 cursor-not-allowed"
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-gray-100 dark:bg-zinc-900 cursor-not-allowed"
             aria-describedby={`${k}-tooltip`}
           />
         </label>
@@ -170,7 +169,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     }
     if (typeof val === 'number') {
       return (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <input
             type="number"
@@ -178,30 +177,30 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
             onChange={handleChange}
             onBlur={handleCommit}
             onKeyDown={handleKeyDown}
-            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-describedby={`${k}-tooltip`}
-            step={k.includes('jump') ? '0.01' : 'any'} // Added step for jump parameters to allow decimals
+            step={k.includes('jump') ? '0.01' : 'any'}
           />
         </label>
       );
     }
     if (typeof val === 'boolean') {
       return (
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <input
             type="checkbox"
             checked={!!inputValue}
             onChange={handleChange}
             onBlur={handleCommit}
-            className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+            className="w-6 h-6 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-describedby={`${k}-tooltip`}
           />
         </label>
       );
     }
     return (
-      <label className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+      <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
         <LabelWithTooltip />
         <input
           type="text"
@@ -209,14 +208,14 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
           onChange={handleChange}
           onBlur={handleCommit}
           onKeyDown={handleKeyDown}
-          className="w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-right bg-white dark:bg-zinc-800"
+          className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-describedby={`${k}-tooltip`}
         />
       </label>
     );
   };
   return (
-    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3">
       {keys.map((k) => <Field key={k} k={k} />)}
     </div>
   );
