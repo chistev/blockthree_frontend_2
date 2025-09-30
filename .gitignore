@@ -16,10 +16,3 @@ yarn-error.log*
 # IDE/editor config files
 .vscode/
 .idea/
-
-# Tailwind CSS config
-tailwind.config.cjs
-postcss.config.cjs
-
-# Vite config
-vite.config.ts
