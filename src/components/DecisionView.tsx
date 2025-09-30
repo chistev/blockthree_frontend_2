@@ -2,15 +2,15 @@ import { useEffect, useState } from 'react';
 import { Card, SectionTitle, Pill, Button, Stat } from './Primitives';
 import { pct, num, months, formatMoney, riskTone, structureLabel } from '../utils';
 import WhatIfDrawer from './WhatIfDrawer';
-import { 
-  ResponsiveContainer, 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  LineChart, 
-  Line, 
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  Tooltip,
+  LineChart,
+  Line,
   ReferenceLine,
   ScatterChart,
   Scatter,
@@ -88,7 +88,7 @@ interface DecisionViewProps {
 // Helper function to prepare NAV data for the chart
 function prepareNavData(navPaths: number[]): { nav: number; cumulative: number }[] {
   if (!navPaths || navPaths.length === 0) return [];
-  
+
   const sorted = [...navPaths].sort((a, b) => a - b);
   return sorted.map((nav, index) => ({
     nav,
@@ -99,7 +99,7 @@ function prepareNavData(navPaths: number[]): { nav: number; cumulative: number }
 // Helper function to prepare LTV data for the chart
 function prepareLtvData(ltvPaths: number[]): { ltv: number; cumulative: number }[] {
   if (!ltvPaths || ltvPaths.length === 0) return [];
-  
+
   const sorted = [...ltvPaths].sort((a, b) => a - b);
   return sorted.map((ltv, index) => ({
     ltv,
@@ -108,15 +108,15 @@ function prepareLtvData(ltvPaths: number[]): { ltv: number; cumulative: number }
 }
 
 // Helper function to prepare dilution vs debt data
-function prepareDilutionVsDebtData(candidates: Candidate[]): { 
-  dilution: number; 
-  debt: number; 
+function prepareDilutionVsDebtData(candidates: Candidate[]): {
+  dilution: number;
+  debt: number;
   type: string;
   structure: string;
   amount: number;
 }[] {
   if (!candidates || candidates.length === 0) return [];
-  
+
   return candidates.map((cand: Candidate) => ({
     dilution: cand.metrics?.dilution?.avg_dilution ?? 0,
     debt: cand.params?.amount ?? 0,
@@ -318,9 +318,8 @@ function DecisionView({
           return (
             <Card key={i} className={expanded === i ? 'border-emerald-500 border-2' : ''}>
               <div
-                className={`h-1 mb-2 rounded ${
-                  risk.tone === 'red' ? 'bg-red-500' : risk.tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
+                className={`h-1 mb-2 rounded ${risk.tone === 'red' ? 'bg-red-500' : risk.tone === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
+                  }`}
               />
               <div className="flex items-center justify-between">
                 <h3 className="font-inter-tight text-base sm:text-lg">Option {String.fromCharCode(65 + i)}</h3>
@@ -392,10 +391,10 @@ function DecisionView({
               dataKey="dilution"
               type="number"
               tickFormatter={(value) => pct(value)}
-              label={{ 
-                value: 'Average Dilution', 
-                angle: -90, 
-                position: 'insideLeft', 
+              label={{
+                value: 'Average Dilution',
+                angle: -90,
+                position: 'insideLeft',
                 offset: -5,
                 style: { textAnchor: 'middle', fontSize: '12px' }
               }}
@@ -403,27 +402,27 @@ function DecisionView({
               domain={[0, 'dataMax + dataMax * 0.1']}
             />
             <ZAxis dataKey="amount" range={[50, 300]} name="Amount" />
-            <Tooltip 
-              content={<CustomTooltip />} 
+            <Tooltip
+              content={<CustomTooltip />}
               position={{ x: 20, y: 20 }}
               wrapperStyle={{ pointerEvents: 'none' }}
             />
-            <Legend 
-              layout="horizontal" 
-              align="center" 
+            <Legend
+              layout="horizontal"
+              align="center"
               verticalAlign="top"
             />
-            <Scatter 
-              name="Financing Options" 
-              data={prepareDilutionVsDebtData(candidates)} 
+            <Scatter
+              name="Financing Options"
+              data={prepareDilutionVsDebtData(candidates)}
               fill="#8884d8"
               shape={(props: any) => {
                 const { cx, cy, payload } = props;
                 const structure = payload.structure;
-                const fillColor = structure === 'ATM' ? '#8884d8' : 
-                                 structure === 'PIPE' ? '#82ca9d' : 
-                                 structure === 'Loan' ? '#ffc658' : 
-                                 '#ff7300';
+                const fillColor = structure === 'ATM' ? '#8884d8' :
+                  structure === 'PIPE' ? '#82ca9d' :
+                    structure === 'Loan' ? '#ffc658' :
+                      '#ff7300';
                 return <circle cx={cx} cy={cy} r={6} fill={fillColor} />;
               }}
             />
@@ -432,11 +431,14 @@ function DecisionView({
           </ScatterChart>
         </ResponsiveContainer>
         <p className="text-xs text-gray-500 mt-2">
-          Shows the trade-off between dilution and debt across different financing structures. 
+          Shows the trade-off between dilution and debt across different financing structures.
           Ideal options are in the bottom-left quadrant (low dilution, low debt).
         </p>
       </Card>
       <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+        <Button onClick={() => setPage('assumptions')} variant="primary" className="w-full sm:w-auto">
+          Back to Assumptions
+        </Button>
         <Button onClick={() => setIsWhatIfOpen(true)} variant="primary" className="w-full sm:w-auto">
           What-If / Stress
         </Button>
