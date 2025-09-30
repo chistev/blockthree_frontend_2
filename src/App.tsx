@@ -311,11 +311,11 @@ export default function App() {
   const isLoading = progress > 0 && progress < 100;
 
   return (
-    <div className="min-h-screen p-6 bg-slate-100 dark:bg-slate-900 font-ibm-plex-sans">
+    <div className="min-h-screen p-6 bg-slate-100 dark:bg-slate-900 font-ibm-plex-sans text-gray-900 dark:text-gray-100">
       <ToastContainer />
       <header className="mb-6 flex justify-between items-center">
-        <h1 className="font-inter-tight text-[28px] font-semibold tracking-tight">Block Three Capital</h1>
-        <Button onClick={() => setDark(!dark)} variant="ghost" className="ml-4">
+        <h1 className="font-inter-tight text-[28px] font-semibold tracking-tight text-gray-900 dark:text-white">Block Three Capital</h1>
+        <Button onClick={() => setDark(!dark)} variant="ghost" className="ml-4 text-gray-700 dark:text-gray-300">
           {dark ? 'Light Mode' : 'Dark Mode'}
         </Button>
       </header>
