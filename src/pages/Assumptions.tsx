@@ -18,6 +18,7 @@ export default function Assumptions({
   progress,
   error,
   handleTickerSubmit,
+  isTickerLoading, // Add this prop
 }: any) {
 
   const groups = [
@@ -43,11 +44,19 @@ export default function Assumptions({
       'jump_volatility',
     ],
   };
+  
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && ticker) {
       handleTickerSubmit(ticker);
     }
   };
+
+  const handleTickerClick = () => {
+    if (ticker) {
+      handleTickerSubmit(ticker);
+    }
+  };
+
   return (
     <div className="space-y-4 px-4 sm:px-6 md:px-0">
       <SectionTitle right={<Pill tone={mode === 'public' ? 'blue' : mode === 'private' ? 'gray' : 'violet'}>Mode: {mode}</Pill>}>
@@ -63,13 +72,46 @@ export default function Assumptions({
         <option value="pro-forma">Pro-Forma</option>
       </select>
       {mode === 'public' && (
-        <input
-          placeholder="Ticker (e.g., AMZN)"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          onKeyDown={onKeyDown}
-          className="w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <div className="flex gap-2">
+          <input
+            placeholder="Ticker (e.g., AMZN)"
+            value={ticker}
+            onChange={(e) => setTicker(e.target.value)}
+            onKeyDown={onKeyDown}
+            className="flex-1 rounded-lg border px-3 py-2 text-sm bg-white dark:bg-zinc-800 dark:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <Button
+            onClick={handleTickerClick}
+            disabled={!ticker || isTickerLoading}
+            variant="danger"
+            className="whitespace-nowrap px-4"
+          >
+            {isTickerLoading ? (
+              <svg
+                className="animate-spin h-4 w-4 text-current"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                ></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            ) : (
+              'Fetch Data'
+            )}
+          </Button>
+        </div>
       )}
       <input
         type="file"
