@@ -63,9 +63,28 @@ const tooltips: { [key: string]: string } = {
   jump_volatility: "Volatility of the jump size in the Bitcoin price process.",
 };
 
+// Helper function to format field names for display
+const formatFieldName = (fieldName: string): string => {
+  return fieldName
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+    .replace(/Btc/g, 'BTC')
+    .replace(/Ltv/g, 'LTV')
+    .replace(/Pct/g, 'Pct')
+    .replace(/Adv/g, 'ADV')
+    .replace(/Atm/g, 'ATM')
+    .replace(/Pipe/g, 'PIPE')
+    .replace(/Opex/g, 'Opex')
+    .replace(/Nols/g, 'NOLs')
+    .replace(/Cvar/g, 'CVaR')
+    .replace(/Iv/g, 'IV')
+    .replace(/Roe/g, 'ROE');
+};
+
 export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
   if (!assumptions) return null;
   const keys = groupFields || Object.keys(assumptions || {}).filter(k => ['number', 'string', 'boolean'].includes(typeof assumptions[k]));
+  
   const Field = ({ k }: { k: string }) => {
     const [inputValue, setInputValue] = useState(assumptions[k] ?? '');
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -81,10 +100,11 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
       }
     };
     const val = assumptions[k];
+    
     // Common label component with question mark icon and tooltip
     const LabelWithTooltip = () => (
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600 dark:text-gray-300">{k}</span>
+        <span className="text-sm text-gray-600 dark:text-gray-300">{formatFieldName(k)}</span>
         {tooltips[k] && (
           <div className="relative group">
             <span className="text-gray-500 dark:text-gray-400 cursor-help text-sm" aria-label={`Tooltip for ${k}`}>
@@ -97,6 +117,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         )}
       </div>
     );
+
     // Special case for hedge_policy
     if (k === 'hedge_policy') {
       return (
@@ -214,6 +235,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
       </label>
     );
   };
+
   return (
     <div className="grid grid-cols-1 gap-3">
       {keys.map((k) => <Field key={k} k={k} />)}
