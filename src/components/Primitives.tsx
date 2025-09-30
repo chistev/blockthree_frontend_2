@@ -58,7 +58,7 @@ export const Stat: React.FC<{
   label: string;
   value: string | number;
   hint?: string;
-  tone?: 'good' | 'amber' | 'red' | 'neutral';
+  tone?: 'good' | 'amber' | 'red' | 'neutral' | 'warn';
 }> = ({ label, value, hint, tone = 'neutral' }) => (
   <div className="flex flex-col">
     <span className="font-ibm-plex-sans text-[12px] text-gray-500">{label}</span>
