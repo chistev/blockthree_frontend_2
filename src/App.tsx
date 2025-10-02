@@ -70,9 +70,7 @@ const runModelMachine = createMachine({
 export default function App() {
   const [page, setPage] = useState('landing');
   const [dark, setDark] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
-    localStorage.getItem('isAuthenticated') === 'true'
-  );
+  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [assumptions, setAssumptions] = useState<any>({});
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -102,24 +100,27 @@ export default function App() {
   }, [dark]);
 
   useEffect(() => {
-    if (isAuthenticated && page === 'landing') {
+    if (token && page === 'landing') {
       setPage('assumptions');
-    } else if (!isAuthenticated && page !== 'landing' && page !== 'login') {
+    } else if (!token && page !== 'landing' && page !== 'login') {
       setPage('login');
     }
-  }, [isAuthenticated, page]);
+  }, [token, page]);
 
   useEffect(() => {
     const initialize = async () => {
-      if (!isAuthenticated) return;
+      if (!token) return;
       try {
         const res = await fetch(API('/api/default_params/'), {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
         });
         if (!res.ok) {
           if (res.status === 401) {
-            setIsAuthenticated(false);
-            localStorage.removeItem('isAuthenticated');
+            setToken(null);
+            localStorage.removeItem('token');
             setPage('login');
             return;
           }
@@ -128,12 +129,15 @@ export default function App() {
         const data = await res.json();
         setAssumptions(data);
         const btcRes = await fetch(API('/api/btc_price/'), {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
         });
         if (!btcRes.ok) {
           if (btcRes.status === 401) {
-            setIsAuthenticated(false);
-            localStorage.removeItem('isAuthenticated');
+            setToken(null);
+            localStorage.removeItem('token');
             setPage('login');
             return;
           }
@@ -150,23 +154,26 @@ export default function App() {
       }
     };
     initialize();
-  }, [isAuthenticated]);
+  }, [token]);
 
   const handleTickerSubmit = async (ticker: string) => {
-    if (!ticker || !isAuthenticated) return;
+    if (!ticker || !token) return;
     setIsTickerLoading(true);
     setError(null);
     const toastId = toast.loading(`Fetching SEC data for ${ticker}...`);
     try {
       const res = await fetch(API('/api/fetch_sec_data/'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ ticker }),
       });
       if (!res.ok) {
         if (res.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem('isAuthenticated');
+          setToken(null);
+          localStorage.removeItem('token');
           setPage('login');
           return;
         }
@@ -198,7 +205,7 @@ export default function App() {
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!isAuthenticated) return;
+    if (!token) return;
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -215,12 +222,15 @@ export default function App() {
     try {
       const res = await fetch(API('/api/upload_sec_data/'), {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       });
       if (!res.ok) {
         if (res.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem('isAuthenticated');
+          setToken(null);
+          localStorage.removeItem('token');
           setPage('login');
           return;
         }
@@ -251,7 +261,7 @@ export default function App() {
   };
 
   const handleCalculate = async () => {
-    if (!isAuthenticated) {
+    if (!token) {
       setPage('login');
       return;
     }
@@ -260,13 +270,16 @@ export default function App() {
     try {
       const res = await fetch(API('/api/lock_snapshot/'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ assumptions, mode }),
       });
       if (!res.ok) {
         if (res.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem('isAuthenticated');
+          setToken(null);
+          localStorage.removeItem('token');
           setPage('login');
           return;
         }
@@ -278,13 +291,16 @@ export default function App() {
       send({ type: 'LOCKED' });
       const calcRes = await fetch(API('/api/calculate/'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ assumptions, format: 'json', use_live: true, snapshot_id: data.snapshot_id }),
       });
       if (!calcRes.ok) {
         if (calcRes.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem('isAuthenticated');
+          setToken(null);
+          localStorage.removeItem('token');
           setPage('login');
           return;
         }
@@ -307,20 +323,23 @@ export default function App() {
   const debouncedWhatIf = useMemo(
     () =>
       debounce(async ({ param, value }: { param: string; value: number }) => {
-        if (!snapshotId || !isAuthenticated) {
+        if (!snapshotId || !token) {
           setPage('login');
           return;
         }
         try {
           const res = await fetch(API('/api/what_if/'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+            },
             body: JSON.stringify({ param, value, snapshot_id: snapshotId, format: 'json' }),
           });
           if (!res.ok) {
             if (res.status === 401) {
-              setIsAuthenticated(false);
-              localStorage.removeItem('isAuthenticated');
+              setToken(null);
+              localStorage.removeItem('token');
               setPage('login');
               return;
             }
@@ -332,22 +351,25 @@ export default function App() {
           setError(e.message);
         }
       }, 500),
-    [snapshotId, isAuthenticated]
+    [snapshotId, token]
   );
 
   const fetchAudit = async () => {
-    if (!isAuthenticated) {
+    if (!token) {
       setPage('login');
       return;
     }
     try {
       const res = await fetch(API('/api/get_audit_trail/'), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
       });
       if (!res.ok) {
         if (res.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem('isAuthenticated');
+          setToken(null);
+          localStorage.removeItem('token');
           setPage('login');
           return;
         }
@@ -361,7 +383,7 @@ export default function App() {
   };
 
   const handleExport = async (format: string) => {
-    if (isExporting || !isAuthenticated) {
+    if (isExporting || !token) {
       setPage('login');
       return;
     }
@@ -370,13 +392,16 @@ export default function App() {
     try {
       const res = await fetch(API('/api/calculate/'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }),
       });
       if (!res.ok) {
         if (res.status === 401) {
-          setIsAuthenticated(false);
-          localStorage.removeItem('isAuthenticated');
+          setToken(null);
+          localStorage.removeItem('token');
           setPage('login');
           return;
         }
@@ -408,8 +433,8 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.removeItem('isAuthenticated');
+    setToken(null);
+    localStorage.removeItem('token');
     setPage('landing');
     setAssumptions({});
     setResults(null);
@@ -429,7 +454,7 @@ export default function App() {
           <Button onClick={() => setDark(!dark)} variant="ghost" className="text-gray-700 dark:text-gray-300">
             {dark ? 'Light Mode' : 'Dark Mode'}
           </Button>
-          {isAuthenticated && (
+          {token && (
             <Button onClick={handleLogout} variant="danger" className="text-gray-700 dark:text-gray-300">
               Logout
             </Button>
@@ -437,8 +462,8 @@ export default function App() {
         </div>
       </header>
       {page === 'landing' && <Landing setPage={setPage} />}
-      {page === 'login' && <Login setIsAuthenticated={setIsAuthenticated} setPage={setPage} />}
-      {page === 'assumptions' && isAuthenticated && (
+      {page === 'login' && <Login setToken={setToken} setPage={setPage} />}
+      {page === 'assumptions' && token && (
         <Assumptions
           assumptions={assumptions}
           setAssumptions={setAssumptions}
@@ -456,9 +481,10 @@ export default function App() {
           error={error}
           handleTickerSubmit={handleTickerSubmit}
           isTickerLoading={isTickerLoading}
+          token={token}
         />
       )}
-      {page === 'decision' && isAuthenticated && results && (
+      {page === 'decision' && token && results && (
         <DecisionView
           results={results}
           assumptions={assumptions}
@@ -471,9 +497,10 @@ export default function App() {
           auditTrail={auditTrail}
           isExporting={isExporting}
           snapshotId={snapshotId}
+          token={token}
         />
       )}
-      {page === 'audit' && isAuthenticated && <AuditPanel auditTrail={auditTrail} setPage={setPage} />}
+      {page === 'audit' && token && <AuditPanel auditTrail={auditTrail} setPage={setPage} token={token} />}
     </div>
   );
 }

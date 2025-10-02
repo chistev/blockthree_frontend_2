@@ -83,6 +83,7 @@ interface DecisionViewProps {
   auditTrail: any[];
   isExporting?: boolean;
   snapshotId?: string | null;
+  token: string | null;
 }
 
 // Helper function to prepare NAV data for the chart

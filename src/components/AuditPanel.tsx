@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card, SectionTitle, Button, Pill, Stat } from './Primitives';
 import { API } from '../utils';
 
-// Types inferred from backend payloads
 interface AuditChange {
   field?: string;
   from?: any;
@@ -24,16 +23,25 @@ interface AuditEntry {
 interface Props {
   auditTrail: AuditEntry[];
   setPage: (page: string) => void;
+  token: string | null;
 }
 
 function formatDate(d?: string) {
   if (!d) return '—';
-  try { return new Date(d).toLocaleString(); } catch { return d; }
+  try {
+    return new Date(d).toLocaleString();
+  } catch {
+    return d;
+  }
 }
 
 function JsonPreview({ value }: { value: any }) {
   const pretty = useMemo(() => {
-    try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+    try {
+      return JSON.stringify(value, null, 2);
+    } catch {
+      return String(value);
+    }
   }, [value]);
   return (
     <pre className="text-xs sm:text-sm whitespace-pre-wrap bg-slate-50 dark:bg-zinc-900/60 p-2 sm:p-3 rounded border border-slate-200 dark:border-zinc-700 overflow-auto max-h-48 sm:max-h-64">
@@ -42,7 +50,7 @@ function JsonPreview({ value }: { value: any }) {
   );
 }
 
-export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Props) {
+export default function AuditPanel({ auditTrail: auditTrailProp, setPage, token }: Props) {
   const [auditTrail, setAuditTrail] = useState<AuditEntry[]>(auditTrailProp || []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,11 +62,26 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const fetchAudit = async () => {
+    if (!token) {
+      setPage('login');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(API('/api/get_audit_trail/'));
-      if (!res.ok) throw new Error('Failed to fetch audit trail');
+      const res = await fetch(API('/api/get_audit_trail/'), {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setPage('login');
+          return;
+        }
+        throw new Error('Failed to fetch audit trail');
+      }
       const data = await res.json();
       setAuditTrail(Array.isArray(data?.audit_trail) ? data.audit_trail : []);
       setCurrentPage(1); // Reset to first page when refreshing
@@ -73,7 +96,7 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
     if (!auditTrailProp || auditTrailProp.length === 0) {
       fetchAudit();
     }
-  }, []);
+  }, [auditTrailProp, token, setPage]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -81,7 +104,9 @@ export default function AuditPanel({ auditTrail: auditTrailProp, setPage }: Prop
       if (modeFilter !== 'all' && e.mode !== modeFilter) return false;
       if (!q) return true;
       const hay = [e.snapshot_id, e.action, e.user, e.code_hash]
-        .concat(Object.keys((e.assumptions || {}))).join(' ').toLowerCase();
+        .concat(Object.keys((e.assumptions || {})))
+        .join(' ')
+        .toLowerCase();
       return hay.includes(q);
     });
   }, [auditTrail, query, modeFilter]);

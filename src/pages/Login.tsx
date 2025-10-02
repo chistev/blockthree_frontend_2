@@ -4,11 +4,11 @@ import { API } from '../utils';
 import { toast } from 'react-toastify';
 
 interface LoginProps {
-  setIsAuthenticated: (value: boolean) => void;
+  setToken: (token: string | null) => void;
   setPage: (page: string) => void;
 }
 
-export default function Login({ setIsAuthenticated, setPage }: LoginProps) {
+export default function Login({ setToken, setPage }: LoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -31,15 +31,15 @@ export default function Login({ setIsAuthenticated, setPage }: LoginProps) {
       if (!res.ok || data.error) {
         throw new Error(data.error || 'Login failed');
       }
-      setIsAuthenticated(true);
-      localStorage.setItem('isAuthenticated', 'true');
+      setToken(data.token);
+      localStorage.setItem('token', data.token);
       toast.update(toastId, {
         render: 'Login successful',
         type: 'success',
         isLoading: false,
         autoClose: 3000,
       });
-      setPage('assumptions'); // Redirect to assumptions after login
+      setPage('assumptions');
     } catch (e: any) {
       setError(e.message);
       toast.update(toastId, {
