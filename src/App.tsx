@@ -4,18 +4,17 @@ import { useMachine } from '@xstate/react';
 import { debounce } from 'lodash';
 import { ToastContainer, toast } from 'react-toastify';
 import Landing from './pages/Landing';
+import Login from './pages/Login';
 import Assumptions from './pages/Assumptions';
 import DecisionView from './components/DecisionView';
 import AuditPanel from './components/AuditPanel';
 import { Button } from './components/Primitives';
 import { API } from './utils';
 
-// Define the machine's context type
 interface MachineContext {
   progress: number;
 }
 
-// Define the machine's event types
 type MachineEvent =
   | { type: 'RUN' }
   | { type: 'LOCKED' }
@@ -23,7 +22,6 @@ type MachineEvent =
   | { type: 'ERROR' }
   | { type: 'RETRY' };
 
-// Define state machine outside the component with proper typing
 const runModelMachine = createMachine({
   id: 'runModel',
   initial: 'idle',
@@ -72,6 +70,9 @@ const runModelMachine = createMachine({
 export default function App() {
   const [page, setPage] = useState('landing');
   const [dark, setDark] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    localStorage.getItem('isAuthenticated') === 'true'
+  );
   const [assumptions, setAssumptions] = useState<any>({});
   const [results, setResults] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -86,15 +87,12 @@ export default function App() {
   const [isExporting, setIsExporting] = useState(false);
   const [isTickerLoading, setIsTickerLoading] = useState(false);
 
-  // Initialize state machine
   const [state, send] = useMachine(runModelMachine);
 
-  // Sync machine's progress with React state
   useEffect(() => {
     setProgress(state.context.progress);
   }, [state.context.progress]);
 
-  // Handle dark mode class on html element
   useEffect(() => {
     if (dark) {
       document.documentElement.classList.add('dark');
@@ -103,16 +101,44 @@ export default function App() {
     }
   }, [dark]);
 
-  // Initialize assumptions and BTC price
+  useEffect(() => {
+    if (isAuthenticated && page === 'landing') {
+      setPage('assumptions');
+    } else if (!isAuthenticated && page !== 'landing' && page !== 'login') {
+      setPage('login');
+    }
+  }, [isAuthenticated, page]);
+
   useEffect(() => {
     const initialize = async () => {
+      if (!isAuthenticated) return;
       try {
-        const res = await fetch(API('/api/default_params/'));
-        if (!res.ok) throw new Error('Failed to fetch defaults');
+        const res = await fetch(API('/api/default_params/'), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            setIsAuthenticated(false);
+            localStorage.removeItem('isAuthenticated');
+            setPage('login');
+            return;
+          }
+          throw new Error('Failed to fetch defaults');
+        }
         const data = await res.json();
         setAssumptions(data);
-        const btcRes = await fetch(API('/api/btc_price/'));
-        if (!btcRes.ok) throw new Error('Failed to fetch BTC price');
+        const btcRes = await fetch(API('/api/btc_price/'), {
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!btcRes.ok) {
+          if (btcRes.status === 401) {
+            setIsAuthenticated(false);
+            localStorage.removeItem('isAuthenticated');
+            setPage('login');
+            return;
+          }
+          throw new Error('Failed to fetch BTC price');
+        }
         const btcData = await btcRes.json();
         setAssumptions((prev: any) => ({
           ...prev,
@@ -124,10 +150,10 @@ export default function App() {
       }
     };
     initialize();
-  }, []);
+  }, [isAuthenticated]);
 
   const handleTickerSubmit = async (ticker: string) => {
-    if (!ticker) return;
+    if (!ticker || !isAuthenticated) return;
     setIsTickerLoading(true);
     setError(null);
     const toastId = toast.loading(`Fetching SEC data for ${ticker}...`);
@@ -137,7 +163,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ticker }),
       });
-      if (!res.ok) throw new Error(`Failed to fetch SEC data for ${ticker}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isAuthenticated');
+          setPage('login');
+          return;
+        }
+        throw new Error(`Failed to fetch SEC data for ${ticker}`);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setAssumptions((prev: any) => ({
@@ -164,6 +198,7 @@ export default function App() {
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAuthenticated) return;
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
     const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -182,7 +217,15 @@ export default function App() {
         method: 'POST',
         body: formData,
       });
-      if (!res.ok) throw new Error(`Upload failed: ${res.statusText}`);
+      if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isAuthenticated');
+          setPage('login');
+          return;
+        }
+        throw new Error(`Upload failed: ${res.statusText}`);
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setAssumptions((prev: any) => ({
@@ -208,7 +251,11 @@ export default function App() {
   };
 
   const handleCalculate = async () => {
-    setProgress(10); // Start progress immediately
+    if (!isAuthenticated) {
+      setPage('login');
+      return;
+    }
+    setProgress(10);
     send({ type: 'RUN' });
     try {
       const res = await fetch(API('/api/lock_snapshot/'), {
@@ -216,7 +263,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assumptions, mode }),
       });
-      if (!res.ok) throw new Error('Lock failed');
+      if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isAuthenticated');
+          setPage('login');
+          return;
+        }
+        throw new Error('Lock failed');
+      }
       const data = await res.json();
       setSnapshotId(data.snapshot_id);
       setProgress(50);
@@ -226,7 +281,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assumptions, format: 'json', use_live: true, snapshot_id: data.snapshot_id }),
       });
-      if (!calcRes.ok) throw new Error('Calculation failed');
+      if (!calcRes.ok) {
+        if (calcRes.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isAuthenticated');
+          setPage('login');
+          return;
+        }
+        throw new Error('Calculation failed');
+      }
       const calcData = await calcRes.json();
       setResults(calcData);
       setProgress(100);
@@ -244,27 +307,52 @@ export default function App() {
   const debouncedWhatIf = useMemo(
     () =>
       debounce(async ({ param, value }: { param: string; value: number }) => {
-        if (!snapshotId) return;
+        if (!snapshotId || !isAuthenticated) {
+          setPage('login');
+          return;
+        }
         try {
           const res = await fetch(API('/api/what_if/'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ param, value, snapshot_id: snapshotId, format: 'json' }),
           });
-          if (!res.ok) throw new Error('What-If failed');
+          if (!res.ok) {
+            if (res.status === 401) {
+              setIsAuthenticated(false);
+              localStorage.removeItem('isAuthenticated');
+              setPage('login');
+              return;
+            }
+            throw new Error('What-If failed');
+          }
           const data = await res.json();
           setResults(data);
         } catch (e: any) {
           setError(e.message);
         }
       }, 500),
-    [snapshotId]
+    [snapshotId, isAuthenticated]
   );
 
   const fetchAudit = async () => {
+    if (!isAuthenticated) {
+      setPage('login');
+      return;
+    }
     try {
-      const res = await fetch(API('/api/get_audit_trail/'));
-      if (!res.ok) throw new Error('Audit fetch failed');
+      const res = await fetch(API('/api/get_audit_trail/'), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isAuthenticated');
+          setPage('login');
+          return;
+        }
+        throw new Error('Audit fetch failed');
+      }
       const data = await res.json();
       setAuditTrail(data.audit_trail || []);
     } catch (e: any) {
@@ -273,7 +361,10 @@ export default function App() {
   };
 
   const handleExport = async (format: string) => {
-    if (isExporting) return;
+    if (isExporting || !isAuthenticated) {
+      setPage('login');
+      return;
+    }
     setIsExporting(true);
     const toastId = toast.loading('Downloading PDF...');
     try {
@@ -282,7 +373,15 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }),
       });
-      if (!res.ok) throw new Error('Export failed');
+      if (!res.ok) {
+        if (res.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem('isAuthenticated');
+          setPage('login');
+          return;
+        }
+        throw new Error('Export failed');
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -308,6 +407,17 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    localStorage.removeItem('isAuthenticated');
+    setPage('landing');
+    setAssumptions({});
+    setResults(null);
+    setSnapshotId(null);
+    setAuditTrail([]);
+    toast.success('Logged out successfully');
+  };
+
   const isLoading = progress > 0 && progress < 100;
 
   return (
@@ -315,12 +425,20 @@ export default function App() {
       <ToastContainer />
       <header className="mb-6 flex justify-between items-center">
         <h1 className="font-inter-tight text-[28px] font-semibold tracking-tight text-gray-900 dark:text-white">Block Three Capital</h1>
-        <Button onClick={() => setDark(!dark)} variant="ghost" className="ml-4 text-gray-700 dark:text-gray-300">
-          {dark ? 'Light Mode' : 'Dark Mode'}
-        </Button>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => setDark(!dark)} variant="ghost" className="text-gray-700 dark:text-gray-300">
+            {dark ? 'Light Mode' : 'Dark Mode'}
+          </Button>
+          {isAuthenticated && (
+            <Button onClick={handleLogout} variant="danger" className="text-gray-700 dark:text-gray-300">
+              Logout
+            </Button>
+          )}
+        </div>
       </header>
       {page === 'landing' && <Landing setPage={setPage} />}
-      {page === 'assumptions' && (
+      {page === 'login' && <Login setIsAuthenticated={setIsAuthenticated} setPage={setPage} />}
+      {page === 'assumptions' && isAuthenticated && (
         <Assumptions
           assumptions={assumptions}
           setAssumptions={setAssumptions}
@@ -337,9 +455,10 @@ export default function App() {
           progress={progress}
           error={error}
           handleTickerSubmit={handleTickerSubmit}
+          isTickerLoading={isTickerLoading}
         />
       )}
-      {page === 'decision' && results && (
+      {page === 'decision' && isAuthenticated && results && (
         <DecisionView
           results={results}
           assumptions={assumptions}
@@ -354,7 +473,7 @@ export default function App() {
           snapshotId={snapshotId}
         />
       )}
-      {page === 'audit' && <AuditPanel auditTrail={auditTrail} setPage={setPage} />}
+      {page === 'audit' && isAuthenticated && <AuditPanel auditTrail={auditTrail} setPage={setPage} />}
     </div>
   );
 }

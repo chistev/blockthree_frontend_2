@@ -18,9 +18,8 @@ export default function Assumptions({
   progress,
   error,
   handleTickerSubmit,
-  isTickerLoading, // Add this prop
+  isTickerLoading,
 }: any) {
-
   const groups = [
     { title: 'BTC Parameters', fields: ['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'IssuePrice'] },
     { title: 'Model Parameters', fields: ['mu', 'sigma', 't', 'risk_free_rate', 'expected_return_btc', 'delta'] },
@@ -44,7 +43,7 @@ export default function Assumptions({
       'jump_volatility',
     ],
   };
-  
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && ticker) {
       handleTickerSubmit(ticker);
@@ -134,7 +133,12 @@ export default function Assumptions({
           </div>
         )}
       </Card>
-      <Button onClick={handleCalculate} disabled={isLoading} variant="primary" className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold">
+      <Button
+        onClick={handleCalculate}
+        disabled={isLoading}
+        variant="primary"
+        className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold"
+      >
         {isLoading ? (
           <>
             <svg

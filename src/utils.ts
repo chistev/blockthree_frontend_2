@@ -1,4 +1,4 @@
-export const API = (path: string) => `https://cperez.pythonanywhere.com${path}`;
+export const API = (path: string) => `http://127.0.0.1:8000${path}`;
 
 export const classNames = (...xs: (string | boolean | undefined)[]): string =>
   xs.filter(Boolean).join(' ');
