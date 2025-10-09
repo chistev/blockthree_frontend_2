@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { classNames } from '../utils';
 
 const tooltips: { [key: string]: string } = {
   // BTC Parameters
@@ -63,22 +62,81 @@ const tooltips: { [key: string]: string } = {
   jump_volatility: "Volatility of the jump size in the Bitcoin price process.",
 };
 
-// Helper function to format field names for display
+// Custom labels for improved readability
+const fieldLabels: Record<string, string> = {
+  BTC_treasury: 'BTC Treasury',
+  BTC_current_market_price: 'BTC Current Market Price',
+  targetBTCPrice: 'Target BTC Price',
+  IssuePrice: 'Issue Price',
+  mu: 'Mu',
+  sigma: 'Sigma',
+  t: 'Time Horizon',
+  risk_free_rate: 'Risk Free Rate',
+  expected_return_btc: 'Expected Return BTC',
+  delta: 'Delta',
+  LoanPrincipal: 'Loan Principal',
+  cost_of_debt: 'Cost of Debt',
+  LTV_Cap: 'LTV Cap',
+  initial_equity_value: 'Initial Equity Value',
+  new_equity_raised: 'New Equity Raised',
+  beta_ROE: 'Beta ROE',
+  shares_basic: 'Basic Shares',
+  shares_fd: 'Fully Diluted Shares',
+  opex_monthly: 'Monthly Opex',
+  tax_rate: 'Tax Rate',
+  nols: 'NOLs',
+  annual_burn_rate: 'Annual Burn Rate',
+  initial_cash: 'Initial Cash',
+  adv_30d: '30-Day ADV',
+  atm_pct_adv: 'ATM Percentage of ADV',
+  pipe_discount: 'PIPE Discount',
+  fees_ecm: 'ECM Fees',
+  fees_oid: 'OID Fees',
+  cure_period_days: 'Cure Period (Days)',
+  haircut_h0: 'Haircut H0',
+  haircut_alpha: 'Haircut Alpha',
+  liquidation_penalty_bps: 'Liquidation Penalty (bps)',
+  hedge_policy: 'Hedge Policy',
+  hedge_intensity: 'Hedge Intensity',
+  hedge_tenor_days: 'Hedge Tenor (Days)',
+  deribit_iv_source: 'Deribit IV Source',
+  manual_iv: 'Manual IV',
+  objective_preset: 'Objective Preset',
+  cvar_on: 'CVaR On',
+  max_dilution: 'Max Dilution',
+  min_runway_months: 'Min Runway Months',
+  max_breach_prob: 'Max Breach Probability',
+  dilution_vol_estimate: 'Dilution Volatility Estimate',
+  vol_mean_reversion_speed: 'Vol Mean Reversion Speed',
+  long_run_volatility: 'Long Run Volatility',
+  min_profit_margin: 'Min Profit Margin',
+  use_variance_reduction: 'Use Variance Reduction',
+  jump_intensity: 'Jump Intensity',
+  jump_mean: 'Jump Mean',
+  jump_volatility: 'Jump Volatility',
+};
+
 const formatFieldName = (fieldName: string): string => {
-  return fieldName
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, char => char.toUpperCase())
-    .replace(/Btc/g, 'BTC')
-    .replace(/Ltv/g, 'LTV')
-    .replace(/Pct/g, 'Pct')
-    .replace(/Adv/g, 'ADV')
-    .replace(/Atm/g, 'ATM')
-    .replace(/Pipe/g, 'PIPE')
-    .replace(/Opex/g, 'Opex')
-    .replace(/Nols/g, 'NOLs')
-    .replace(/Cvar/g, 'CVaR')
-    .replace(/Iv/g, 'IV')
-    .replace(/Roe/g, 'ROE');
+  if (fieldLabels[fieldName]) {
+    return fieldLabels[fieldName];
+  }
+  // Fallback for any new/unknown fields
+  let name = fieldName.replace(/_/g, ' ');
+  name = name.replace(/([a-z])([A-Z])/g, '$1 $2'); // Split camelCase
+  name = name.charAt(0).toUpperCase() + name.slice(1); // Capitalize first letter
+  // Additional replacements for clarity
+  name = name.replace(/\bPct\b/gi, 'Percentage');
+  name = name.replace(/\bAdv\b/gi, 'ADV');
+  name = name.replace(/\bAtm\b/gi, 'ATM');
+  name = name.replace(/\bPipe\b/gi, 'PIPE');
+  name = name.replace(/\bOpex\b/gi, 'Opex');
+  name = name.replace(/\bNols\b/gi, 'NOLs');
+  name = name.replace(/\bCvar\b/gi, 'CVaR');
+  name = name.replace(/\bIv\b/gi, 'IV');
+  name = name.replace(/\bRoe\b/gi, 'ROE');
+  name = name.replace(/\bBtc\b/gi, 'BTC');
+  name = name.replace(/\bLtv\b/gi, 'LTV');
+  return name;
 };
 
 export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
