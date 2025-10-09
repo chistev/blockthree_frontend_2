@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { classNames } from '../utils';
 
 const tooltips: { [key: string]: string } = {
   // BTC Parameters
@@ -84,10 +85,10 @@ const fieldLabels: Record<string, string> = {
   shares_fd: 'Fully Diluted Shares',
   opex_monthly: 'Monthly Opex',
   tax_rate: 'Tax Rate',
-  nols: 'NOLs',
+  nols: 'Net Operating Losses',
   annual_burn_rate: 'Annual Burn Rate',
   initial_cash: 'Initial Cash',
-  adv_30d: '30-Day ADV',
+  adv_30d: '30-Day Average Daily Volume',
   atm_pct_adv: 'ATM Percentage of ADV',
   pipe_discount: 'PIPE Discount',
   fees_ecm: 'ECM Fees',
@@ -130,7 +131,7 @@ const formatFieldName = (fieldName: string): string => {
   name = name.replace(/\bAtm\b/gi, 'ATM');
   name = name.replace(/\bPipe\b/gi, 'PIPE');
   name = name.replace(/\bOpex\b/gi, 'Opex');
-  name = name.replace(/\bNols\b/gi, 'NOLs');
+  name = name.replace(/\bNols\b/gi, 'Net Operating Losses');
   name = name.replace(/\bCvar\b/gi, 'CVaR');
   name = name.replace(/\bIv\b/gi, 'IV');
   name = name.replace(/\bRoe\b/gi, 'ROE');
