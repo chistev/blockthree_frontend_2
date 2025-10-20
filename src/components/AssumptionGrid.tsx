@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { classNames } from '../utils';
+import { toast } from 'react-toastify';
 
 const tooltips: { [key: string]: string } = {
   // BTC Parameters
@@ -140,24 +140,117 @@ const formatFieldName = (fieldName: string): string => {
   return name;
 };
 
+const moneyFields = new Set([
+  'BTC_current_market_price',
+  'targetBTCPrice',
+  'IssuePrice',
+  'LoanPrincipal',
+  'initial_equity_value',
+  'new_equity_raised',
+  'opex_monthly',
+  'nols',
+  'annual_burn_rate',
+  'initial_cash',
+  'adv_30d',
+]);
+
+const rateFields = new Set([
+  'mu',
+  'sigma',
+  'risk_free_rate',
+  'expected_return_btc',
+  'delta',
+  'cost_of_debt',
+  'LTV_Cap',
+  'beta_ROE',
+  'tax_rate',
+  'atm_pct_adv',
+  'pipe_discount',
+  'fees_ecm',
+  'fees_oid',
+  'haircut_h0',
+  'haircut_alpha',
+  'hedge_intensity',
+  'manual_iv',
+  'max_dilution',
+  'max_breach_prob',
+  'dilution_vol_estimate',
+  'vol_mean_reversion_speed',
+  'long_run_volatility',
+  'min_profit_margin',
+  'jump_intensity',
+  'jump_mean',
+  'jump_volatility',
+]);
+
 export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
   if (!assumptions) return null;
   const keys = groupFields || Object.keys(assumptions || {}).filter(k => ['number', 'string', 'boolean'].includes(typeof assumptions[k]));
   
   const Field = ({ k }: { k: string }) => {
-    const [inputValue, setInputValue] = useState(assumptions[k] ?? '');
+    const [inputValue, setInputValue] = useState(typeof assumptions[k] === 'boolean' ? assumptions[k] : assumptions[k]?.toString() ?? '');
+    const [isFocused, setIsFocused] = useState(false);
+
+    const isReadOnly = k === 'BTC_current_market_price';
+
+    const formatValue = (val: string) => {
+      const num = parseFloat(val);
+      if (isNaN(num)) return val; // Fallback if not a number
+
+      const options = {
+        minimumFractionDigits: rateFields.has(k) ? 2 : 0,
+        maximumFractionDigits: rateFields.has(k) ? 4 : 0,
+      };
+
+      let formatted = num.toLocaleString('en-US', options);
+      if (moneyFields.has(k)) formatted = '$' + formatted;
+      return formatted;
+    };
+
+    const displayValue = isFocused && typeof inputValue !== 'boolean' ? inputValue : typeof inputValue === 'boolean' ? inputValue : formatValue(inputValue);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-      setInputValue(e.target.type === 'checkbox' ? e.target.checked : e.target.value);
-    };
-    const handleCommit = () => {
-      const value = typeof assumptions[k] === 'number' ? Number(inputValue) : inputValue;
-      setAssumptions({ ...assumptions, [k]: value });
-    };
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        handleCommit();
+      if (e.target.type === 'checkbox') {
+        setInputValue((e.target as HTMLInputElement).checked);
+      } else {
+        setInputValue(e.target.value);
       }
     };
+
+    const handleCommit = () => {
+      if (typeof assumptions[k] === 'number') {
+        let raw = inputValue.toString().replace(/[$,]/g, '');
+        const num = parseFloat(raw);
+        if (isNaN(num)) {
+          toast.error(`Invalid number for ${formatFieldName(k)}`);
+          setInputValue(assumptions[k].toString());
+          return;
+        }
+        setAssumptions({ ...assumptions, [k]: num });
+        setInputValue(num.toString());
+      } else if (typeof assumptions[k] === 'boolean') {
+        setAssumptions({ ...assumptions, [k]: inputValue });
+      } else {
+        setAssumptions({ ...assumptions, [k]: inputValue });
+      }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter' && typeof inputValue !== 'boolean') {
+        handleCommit();
+        (e.target as HTMLInputElement).blur();
+      }
+    };
+
+    const handleFocus = () => {
+      if (!isReadOnly) setIsFocused(true);
+    };
+
+    const handleBlur = () => {
+      setIsFocused(false);
+      handleCommit();
+    };
+
     const val = assumptions[k];
     
     // Common label component with question mark icon and tooltip
@@ -232,34 +325,20 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
-    // Read-only field for BTC_current_market_price
-    if (k === 'BTC_current_market_price') {
-      return (
-        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
-          <LabelWithTooltip />
-          <input
-            type="number"
-            value={inputValue}
-            readOnly
-            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-gray-100 dark:bg-zinc-900 cursor-not-allowed"
-            aria-describedby={`${k}-tooltip`}
-          />
-        </label>
-      );
-    }
     if (typeof val === 'number') {
       return (
         <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
           <LabelWithTooltip />
           <input
-            type="number"
-            value={inputValue}
+            type="text"
+            value={displayValue}
             onChange={handleChange}
-            onBlur={handleCommit}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            readOnly={isReadOnly}
+            className={`w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'cursor-not-allowed bg-gray-100 dark:bg-zinc-900' : ''}`}
             aria-describedby={`${k}-tooltip`}
-            step={k.includes('jump') ? '0.01' : 'any'}
           />
         </label>
       );
@@ -270,7 +349,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
           <LabelWithTooltip />
           <input
             type="checkbox"
-            checked={!!inputValue}
+            checked={inputValue as boolean}
             onChange={handleChange}
             onBlur={handleCommit}
             className="w-6 h-6 rounded border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
