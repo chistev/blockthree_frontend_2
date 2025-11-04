@@ -24,6 +24,7 @@ export default function Assumptions({
     { title: 'BTC Parameters', fields: ['BTC_treasury', 'BTC_current_market_price', 'targetBTCPrice', 'IssuePrice'] },
     { title: 'Model Parameters', fields: ['mu', 'sigma', 't', 'risk_free_rate', 'expected_return_btc', 'delta'] },
     { title: 'Debt & Equity Parameters', fields: ['LoanPrincipal', 'cost_of_debt', 'LTV_Cap', 'initial_equity_value', 'new_equity_raised', 'beta_ROE'] },
+    { title: 'Structure Parameters', fields: ['structure'] },
     { title: 'Balance Sheet', fields: ['shares_basic', 'shares_fd', 'opex_monthly', 'tax_rate', 'nols', 'annual_burn_rate', 'initial_cash'] },
     { title: 'Capital Routes', fields: ['adv_30d', 'atm_pct_adv', 'pipe_discount', 'fees_ecm', 'fees_oid'] },
     { title: 'Covenants/Haircuts', fields: ['cure_period_days', 'haircut_h0', 'haircut_alpha', 'liquidation_penalty_bps'] },

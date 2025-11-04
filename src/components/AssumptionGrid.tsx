@@ -61,6 +61,9 @@ const tooltips: { [key: string]: string } = {
   jump_intensity: "Annual intensity (lambda) of jumps in the Bitcoin price process.",
   jump_mean: "Mean of the jump size (log return) in the Bitcoin price process.",
   jump_volatility: "Volatility of the jump size in the Bitcoin price process.",
+
+  // NEW: Structure dropdown tooltip
+  structure: "Capital structure type: 'Loan' (default), 'Convertible' (with optional premium), 'PIPE' (Private Investment in Public Equity), or 'ATM' (At-The-Market offering). Affects optimization and metrics.",
 };
 
 // Custom labels for improved readability
@@ -115,17 +118,18 @@ const fieldLabels: Record<string, string> = {
   jump_intensity: 'Jump Intensity',
   jump_mean: 'Jump Mean',
   jump_volatility: 'Jump Volatility',
+
+  // NEW
+  structure: 'Structure Type',
 };
 
 const formatFieldName = (fieldName: string): string => {
   if (fieldLabels[fieldName]) {
     return fieldLabels[fieldName];
   }
-  // Fallback for any new/unknown fields
   let name = fieldName.replace(/_/g, ' ');
-  name = name.replace(/([a-z])([A-Z])/g, '$1 $2'); // Split camelCase
-  name = name.charAt(0).toUpperCase() + name.slice(1); // Capitalize first letter
-  // Additional replacements for clarity
+  name = name.replace(/([a-z])([A-Z])/g, '$1 $2');
+  name = name.charAt(0).toUpperCase() + name.slice(1);
   name = name.replace(/\bPct\b/gi, 'Percentage');
   name = name.replace(/\bAdv\b/gi, 'ADV');
   name = name.replace(/\bAtm\b/gi, 'ATM');
@@ -201,12 +205,9 @@ export default function AssumptionGrid({
     );
     const [isFocused, setIsFocused] = useState(false);
 
-    // REMOVED: const isReadOnly = k === 'BTC_current_market_price';
-    // → Now all numeric fields are editable, including BTC_current_market_price
-
     const formatValue = (val: string) => {
       const num = parseFloat(val);
-      if (isNaN(num)) return val; // Fallback if not a number
+      if (isNaN(num)) return val;
 
       const options = {
         minimumFractionDigits: rateFields.has(k) ? 2 : 0,
@@ -269,7 +270,6 @@ export default function AssumptionGrid({
 
     const val = assumptions[k];
 
-    // Common label component with question mark icon and tooltip
     const LabelWithTooltip = () => (
       <div className="flex items-center gap-2">
         <span className="text-sm text-gray-600 dark:text-gray-300">{formatFieldName(k)}</span>
@@ -285,6 +285,27 @@ export default function AssumptionGrid({
         )}
       </div>
     );
+
+    // NEW: Special case for structure dropdown
+    if (k === 'structure') {
+      return (
+        <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
+          <LabelWithTooltip />
+          <select
+            value={inputValue}
+            onChange={handleChange}
+            onBlur={handleCommit}
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-describedby={`${k}-tooltip`}
+          >
+            <option value="Loan">Loan</option>
+            <option value="Convertible">Convertible</option>
+            <option value="PIPE">PIPE</option>
+            <option value="ATM">ATM</option>
+          </select>
+        </label>
+      );
+    }
 
     // Special case for hedge_policy
     if (k === 'hedge_policy') {
