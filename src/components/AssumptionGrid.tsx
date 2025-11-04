@@ -4,7 +4,7 @@ import { toast } from 'react-toastify';
 const tooltips: { [key: string]: string } = {
   // BTC Parameters
   BTC_treasury: "Total Bitcoin held in the treasury (in BTC).",
-  BTC_current_market_price: "Current market price of Bitcoin (USD, read-only, fetched live).",
+  BTC_current_market_price: "Current market price of Bitcoin (USD, editable; defaults to live-fetched value).",
   targetBTCPrice: "Target Bitcoin price for drift adjustment in simulations (USD).",
   IssuePrice: "Price per share for new equity issuance (USD).",
   // Model Parameters
@@ -183,15 +183,26 @@ const rateFields = new Set([
   'jump_volatility',
 ]);
 
-export default function AssumptionGrid({ assumptions, setAssumptions, groupFields }: { assumptions: any, setAssumptions: (a: any) => void, groupFields?: string[] }) {
+export default function AssumptionGrid({
+  assumptions,
+  setAssumptions,
+  groupFields,
+}: {
+  assumptions: any;
+  setAssumptions: (a: any) => void;
+  groupFields?: string[];
+}) {
   if (!assumptions) return null;
   const keys = groupFields || Object.keys(assumptions || {}).filter(k => ['number', 'string', 'boolean'].includes(typeof assumptions[k]));
-  
+
   const Field = ({ k }: { k: string }) => {
-    const [inputValue, setInputValue] = useState(typeof assumptions[k] === 'boolean' ? assumptions[k] : assumptions[k]?.toString() ?? '');
+    const [inputValue, setInputValue] = useState(
+      typeof assumptions[k] === 'boolean' ? assumptions[k] : assumptions[k]?.toString() ?? ''
+    );
     const [isFocused, setIsFocused] = useState(false);
 
-    const isReadOnly = k === 'BTC_current_market_price';
+    // REMOVED: const isReadOnly = k === 'BTC_current_market_price';
+    // → Now all numeric fields are editable, including BTC_current_market_price
 
     const formatValue = (val: string) => {
       const num = parseFloat(val);
@@ -207,7 +218,12 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
       return formatted;
     };
 
-    const displayValue = isFocused && typeof inputValue !== 'boolean' ? inputValue : typeof inputValue === 'boolean' ? inputValue : formatValue(inputValue);
+    const displayValue =
+      isFocused && typeof inputValue !== 'boolean'
+        ? inputValue
+        : typeof inputValue === 'boolean'
+        ? inputValue
+        : formatValue(inputValue);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
       if (e.target.type === 'checkbox') {
@@ -243,7 +259,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     };
 
     const handleFocus = () => {
-      if (!isReadOnly) setIsFocused(true);
+      setIsFocused(true);
     };
 
     const handleBlur = () => {
@@ -252,7 +268,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
     };
 
     const val = assumptions[k];
-    
+
     // Common label component with question mark icon and tooltip
     const LabelWithTooltip = () => (
       <div className="flex items-center gap-2">
@@ -288,6 +304,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
+
     // Special case for objective_preset
     if (k === 'objective_preset') {
       return (
@@ -307,6 +324,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
+
     // Special case for deribit_iv_source
     if (k === 'deribit_iv_source') {
       return (
@@ -325,6 +343,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
+
     if (typeof val === 'number') {
       return (
         <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
@@ -336,13 +355,13 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
             onFocus={handleFocus}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
-            readOnly={isReadOnly}
-            className={`w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500 ${isReadOnly ? 'cursor-not-allowed bg-gray-100 dark:bg-zinc-900' : ''}`}
+            className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-describedby={`${k}-tooltip`}
           />
         </label>
       );
     }
+
     if (typeof val === 'boolean') {
       return (
         <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
@@ -358,6 +377,7 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
         </label>
       );
     }
+
     return (
       <label className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-gray-200 dark:border-zinc-700 p-3">
         <LabelWithTooltip />
@@ -368,7 +388,6 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
           onBlur={handleCommit}
           onKeyDown={handleKeyDown}
           className="w-full sm:w-48 rounded-lg border-gray-300 dark:border-zinc-600 px-3 py-2 text-sm text-right bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-describedby={`${k}-tooltip`}
         />
       </label>
     );
@@ -376,7 +395,9 @@ export default function AssumptionGrid({ assumptions, setAssumptions, groupField
 
   return (
     <div className="grid grid-cols-1 gap-3">
-      {keys.map((k) => <Field key={k} k={k} />)}
+      {keys.map((k) => (
+        <Field key={k} k={k} />
+      ))}
     </div>
   );
 }

@@ -295,7 +295,7 @@ export default function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ assumptions, format: 'json', use_live: true, snapshot_id: data.snapshot_id }),
+        body: JSON.stringify({ assumptions, format: 'json', use_live: false, snapshot_id: data.snapshot_id }),
       });
       if (!calcRes.ok) {
         if (calcRes.status === 401) {
@@ -396,7 +396,7 @@ export default function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({ assumptions, format, use_live: true, snapshot_id: snapshotId }),
+        body: JSON.stringify({ assumptions, format, use_live: false, snapshot_id: snapshotId }),
       });
       if (!res.ok) {
         if (res.status === 401) {
