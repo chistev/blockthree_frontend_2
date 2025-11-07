@@ -64,6 +64,8 @@ const tooltips: { [key: string]: string } = {
 
   // NEW: Structure dropdown tooltip
   structure: "Capital structure type: 'Loan' (default), 'Convertible' (with optional premium), 'PIPE' (Private Investment in Public Equity), or 'ATM' (At-The-Market offering). Affects optimization and metrics.",
+
+  opex_stress_volatility: "Annualized volatility for lognormal shocks to operating expenses (default 0.35 for 35%). Affects stressed burn rate in bear/bull markets.",
 };
 
 // Custom labels for improved readability
@@ -121,6 +123,7 @@ const fieldLabels: Record<string, string> = {
 
   // NEW
   structure: 'Structure Type',
+  opex_stress_volatility: 'Opex Stress Volatility',
 };
 
 const formatFieldName = (fieldName: string): string => {

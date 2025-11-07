@@ -42,6 +42,7 @@ export default function Assumptions({
       'jump_intensity',
       'jump_mean',
       'jump_volatility',
+      'opex_stress_volatility',
     ],
   };
 
