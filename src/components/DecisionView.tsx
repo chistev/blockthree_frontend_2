@@ -355,21 +355,21 @@ function DecisionView({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <SectionTitle>NAV Fan (Median, 50%, 90%)</SectionTitle>
-          <FanChart
+          {/* <FanChart
             navMatrix={(nav as any).nav_matrix}
             navPaths={nav.nav_paths}
             yLabel="NAV ($)"
             showBaseline={(nav as any)?.baseline}
-          />
+          /> */}
         </Card>
         <Card>
           <SectionTitle>LTV Distribution</SectionTitle>
-          <HistogramWithThreshold
+          {/* <HistogramWithThreshold
             ltvSamples={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "number" ? ltv.ltv_paths as number[] : undefined}
             ltvObjects={Array.isArray(ltv.ltv_paths) && typeof ltv.ltv_paths[0] === "object" ? (ltv.ltv_paths as { index?: number; ltv: number }[]) : undefined}
             cap={assumptions.LTV_Cap ?? 0.7}
             bins={24}
-          />
+          /> */}
         </Card>
       </div>
       <Card>
