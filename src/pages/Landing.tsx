@@ -1,224 +1,123 @@
-import React from 'react';
-import { Button, Card, SectionTitle } from '../components/Primitives';
+import React, { useState } from 'react';
 
-interface LandingProps {
-  setPage: (page: string) => void;
-}
+export default function LandingPage() {
+  const [isCalculating, setIsCalculating] = useState(false);
 
-const Landing: React.FC<LandingProps> = ({ setPage }) => {
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-32">
-      {/* Hero Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <div className="space-y-10">
-          <div>
-            <h1 className="text-6xl lg:text-7xl font-bold tracking-tighter text-gray-900 dark:text-white leading-none">
-              Block Three
-            </h1>
-            <h2 className="mt-6 text-4xl lg:text-5xl font-semibold text-gray-800 dark:text-gray-100 leading-tight">
-              Intelligence for Bitcoin Capital Markets
+    <>
+      <div className="min-h-screen bg-gray-50">
+        {/* Navigation */}
+        <nav className="bg-white shadow-sm border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">₿</span>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900">Block Three Capital</h1>
+              </div>
+            </div>
+          </div>
+        </nav>
+
+        {/* Hero Section */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+          <div className="text-center">
+            <h2 className="text-5xl font-extrabold text-gray-900 tracking-tight">
+              Optimize Bitcoin Treasury
+              <span className="block text-orange-500">Without Destroying Equity</span>
             </h2>
-            <p className="mt-8 text-xl lg:text-2xl text-gray-600 dark:text-gray-400 leading-relaxed max-w-2xl">
-              Structured finance, risk analytics, and capital solutions for institutional treasuries.
+            <p className="mt-6 text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed">
+              Model PIPE, ATM, BTC-backed loans, convertibles, and hybrid structures with 
+              <strong> Monte Carlo precision</strong> — compare dilution, LTV breach risk, runway, 
+              ROE uplift, and profit margin in seconds.
             </p>
-          </div>
 
-          <div className="flex flex-wrap gap-6">
-            <Button
-              onClick={() => setPage('login')}
-              variant="primary"
-              className="text-lg font-medium px-10 py-4 shadow-lg hover:shadow-xl transition-shadow"
-            >
-              Request Mandate
-            </Button>
-            <Button
-              onClick={() => setPage('login')}
-              variant="outline"
-              className="text-lg font-medium px-10 py-4 border-2"
-            >
-              View Demo
-            </Button>
+            <div className="mt-10 flex justify-center gap-6">
+              <button
+                onClick={() => setIsCalculating(true)}
+                className="inline-flex items-center px-8 py-4 border border-transparent text-lg font-medium rounded-lg text-white bg-orange-500 hover:bg-orange-600 transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                {isCalculating ? 'Launching Calculator...' : 'Open Risk Calculator'}
+                <svg className="ml-3 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Platform Snapshot */}
-        <Card className="p-10 bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-zinc-900 dark:via-zinc-900/95 dark:to-zinc-800 border border-gray-200 dark:border-zinc-800 shadow-2xl">
-          <div className="text-sm font-medium text-gray-500 dark:text-gray-400 tracking-widest uppercase mb-8">
-            Platform Snapshot
-          </div>
-          <div className="space-y-10">
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 tracking-wide">Treasury Holdings</div>
-              <div className="text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white tracking-tight">
-                14,500 BTC
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 tracking-wide">Financed Notional</div>
-                <div className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">$425M</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 tracking-wide">Dilution Improvement</div>
-                <div className="text-3xl lg:text-4xl font-bold text-green-600 dark:text-green-400">−320 bps</div>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 mb-2 tracking-wide">Runway Extension</div>
-              <div className="text-3xl lg:text-4xl font-bold text-blue-600 dark:text-blue-400">+9.4 mo</div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
-      {/* Narrative */}
-      <div className="text-center py-20 border-y border-gray-200 dark:border-zinc-800">
-        <h2 className="text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Institutional Finance. Bitcoin-Native.
-        </h2>
-        <p className="mt-8 text-xl lg:text-2xl text-gray-600 dark:text-gray-400 max-w-4xl mx-auto leading-relaxed">
-          We transform treasury data into clarity, strategy, and execution — with discipline and precision.
-        </p>
-      </div>
-
-      {/* Value Pillars */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-        {[
-          { title: 'Model', desc: 'Deep risk insight for dynamic treasuries.' },
-          { title: 'Optimize', desc: 'Capital efficiency engineered for Bitcoin exposure.' },
-          { title: 'Structure', desc: 'Bespoke financing across credit, convertibles, and hybrid capital.' },
-        ].map((item) => (
-          <Card
-            key={item.title}
-            className="p-10 text-center hover:shadow-2xl transition-shadow duration-300 border border-gray-200 dark:border-zinc-800"
-          >
-            <h3 className="text-3xl font-bold tracking-tight mb-6 text-gray-900 dark:text-white">
-              {item.title}
-            </h3>
-            <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed">
-              {item.desc}
-            </p>
-          </Card>
-        ))}
-      </div>
-
-      {/* Solutions */}
-      <div className="space-y-16">
-        <div className="text-center">
-          <h2 className="text-4xl lg:text-5xl font-bold tracking-tight">
-            Boutique Investment Banking for Bitcoin Treasuries
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {[
-            'NAV Risk Audit',
-            'Treasury Optimization',
-            'BTC-Backed Lending',
-            'Adaptive Convertibles',
-            'Preferred & Hybrid Equity',
-            'Secondary Capabilities',
-          ].map((title) => (
-            <Card
-              key={title}
-              className="p-8 border-l-4 border-blue-600 bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-900/20"
-            >
-              <h3 className="text-xl font-bold tracking-tight mb-4 text-gray-900 dark:text-white">
-                {title}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
-                {title === 'Secondary Capabilities' ? (
-                  <ul className="space-y-2 text-sm">
-                    <li>• Senior, stacked, and mezzanine credit</li>
-                    <li>• Repo and BTC-secured liquidity facilities</li>
-                    <li>• ATM, PIPE, and private placement execution</li>
-                    <li>• Treasury strategy & capital structure advisory</li>
+        {/* Features Grid */}
+        <div className="bg-white py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+              {[
+                {
+                  title: "5 Funding Structures",
+                  items: ["BTC-Backed Loan", "Convertible Note", "PIPE", "ATM Equity", "Hybrid Blends"],
+                  icon: "🏗️"
+                },
+                {
+                  title: "Advanced Modeling",
+                  items: ["Heston + Jump Diffusion", "Antithetic Variates", "NSGA-III Optimization", "Haircut & Cure Logic"],
+                  icon: "⚙️"
+                },
+                {
+                  title: "Key Outputs",
+                  items: ["LTV Breach Probability", "Dilution vs Savings", "Runway Distribution", "ROE Uplift & WACC", "CVaR & Stress Tests"],
+                  icon: "📊"
+                }
+              ].map((col, i) => (
+                <div key={i} className="text-center">
+                  <div className="text-5xl mb-4">{col.icon}</div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">{col.title}</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    {col.items.map((item, j) => (
+                      <li key={j} className="flex items-center justify-center">
+                        <span className="w-1.5 h-1.5 bg-orange-400 rounded-full mr-3"></span>
+                        {item}
+                      </li>
+                    ))}
                   </ul>
-                ) : (
-                  `Institutional-grade ${title.toLowerCase()} tailored to Bitcoin-native balance sheets.`
-                )}
-              </p>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* The Block Three Stack */}
-      <div className="py-20 border-y border-gray-200 dark:border-zinc-800">
-        <div className="text-center mb-16">
-          <h2 className="text-5xl font-bold tracking-tight mb-4">The Block Three Stack</h2>
-          <p className="text-2xl text-gray-600 dark:text-gray-400">Analyze → Optimize → Execute</p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {[
-            { num: '1', title: 'Intelligence', desc: 'Live market data, risk simulation, and treasury diagnostics.' },
-            { num: '2', title: 'Optimization', desc: 'Capital structure modeling and strategy design across instruments.' },
-            { num: '3', title: 'Execution', desc: 'Mandate preparation, pricing, negotiation, and syndication.' },
-          ].map((item) => (
-            <div key={item.num} className="text-center space-y-6">
-              <div className="text-8xl font-bold text-blue-600 dark:text-blue-500 tracking-tighter">
-                {item.num}
-              </div>
-              <h3 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                {item.title}
-              </h3>
-              <p className="text-lg text-gray-600 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-                {item.desc}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Metrics Strip */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-12 text-center py-20 border-y border-gray-200 dark:border-zinc-800">
-        {[
-          { value: '$2.5B+', label: 'Assets Analyzed' },
-          { value: '50+', label: 'Institutional Treasuries' },
-          { value: '10k+', label: 'Simulations per Mandate' },
-          { value: '99.9%', label: 'Uptime & Monitoring' },
-        ].map((stat) => (
-          <div key={stat.label}>
-            <div className="text-5xl lg:text-6xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
-              {stat.value}
-            </div>
-            <div className="mt-4 text-sm lg:text-base text-gray-600 dark:text-gray-400 font-medium tracking-wide uppercase">
-              {stat.label}
+                </div>
+              ))}
             </div>
           </div>
-        ))}
-      </div>
+        </div>
 
-      {/* Final CTA */}
-      <div className="text-center py-24 space-y-10">
-        <h2 className="text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 dark:text-white">
-          Ready to institutionalize your Bitcoin treasury?
-        </h2>
-        <p className="text-2xl text-gray-600 dark:text-gray-400">
-          Begin your mandate with Block Three.
-        </p>
-        <Button
-          onClick={() => setPage('login')}
-          variant="primary"
-          className="text-xl font-semibold px-16 py-5 shadow-2xl hover:shadow-3xl transition-shadow"
-        >
-          Request Mandate
-        </Button>
-      </div>
+        {/* Presets */}
+        <div className="py-16 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h3 className="text-3xl font-bold text-gray-900">Start with Risk Presets</h3>
+            <p className="mt-4 text-lg text-gray-600">Defensive • Balanced • Growth</p>
+            <div className="mt-10 flex justify-center gap-6 flex-wrap">
+              {["Defensive", "Balanced", "Growth"].map((preset) => (
+                <div
+                  key={preset}
+                  className="bg-white px-8 py-5 rounded-xl shadow-sm border border-gray-200 text-lg font-medium text-gray-800 hover:shadow-md transition"
+                >
+                  {preset}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-      {/* Footer */}
-      <div className="text-center py-12 border-t border-gray-200 dark:border-zinc-800 text-sm text-gray-500 dark:text-gray-400 space-y-2">
-        <div className="font-semibold tracking-wider">Block Three Capital LLC</div>
-        <div>© 2025 Block Three. All rights reserved.</div>
-        <div className="text-xs mt-4 opacity-75">
-          This site is for institutional clients and qualified investors only.
+        {/* CTA Footer */}
+        <div className="bg-white border-t border-gray-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
+            <p className="text-gray-600">
+              Used by public company treasurers & Bitcoin-native finance teams
+            </p>
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="mt-6 inline-flex items-center px-6 py-3 bg-orange-500 text-white font-medium rounded-lg hover:bg-orange-600 transition"
+            >
+              Get Started
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
-};
-
-export default Landing;
+}
