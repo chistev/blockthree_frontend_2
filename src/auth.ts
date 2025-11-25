@@ -1,0 +1,33 @@
+export const getAuthToken = (): string | null => {
+  return localStorage.getItem('authToken');
+};
+
+export const setAuthToken = (token: string): void => {
+  localStorage.setItem('authToken', token);
+};
+
+export const removeAuthToken = (): void => {
+  localStorage.removeItem('authToken');
+};
+
+export const isAuthenticated = (): boolean => {
+  return !!getAuthToken();
+};
+
+// Helper for authenticated fetch requests
+export const authFetch = async (url: string, options: RequestInit = {}) => {
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};

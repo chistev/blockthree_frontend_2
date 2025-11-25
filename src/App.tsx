@@ -1,8 +1,8 @@
+// App.tsx
 import React, { useEffect, useState } from 'react';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import DealsPage from './pages/DealsPage';
-import { Button } from './components/Primitives';
 import DealDetail from './components/DealDetail';
 
 interface Deal {
@@ -19,9 +19,14 @@ interface Deal {
 }
 
 export default function App() {
-  const [page, setPage] = useState('landing');
-  const [dark, setDark] = useState(true);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [page, setPage] = useState<'landing' | 'login' | 'deals' | `deal/${string}`>('landing');
+  const [dark] = useState(true);
+  
+  // Simple password-based auth — no token needed
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('btc-treasury-auth') === 'authenticated';
+  });
+
   const [deals, setDeals] = useState<Deal[]>(() => {
     const saved = localStorage.getItem('deals');
     return saved ? JSON.parse(saved) : [];
@@ -31,17 +36,24 @@ export default function App() {
     localStorage.setItem('deals', JSON.stringify(deals));
   }, [deals]);
 
+  // Auto-redirect logic
   useEffect(() => {
-    if (token && page === 'landing') {
+    if (isAuthenticated && page === 'landing') {
       setPage('deals');
-    } else if (!token && !['landing', 'login'].includes(page)) {
+    } else if (!isAuthenticated && !['landing', 'login'].includes(page)) {
       setPage('login');
     }
-  }, [token, page]);
+  }, [isAuthenticated, page]);
+
+  const handleLoginSuccess = () => {
+    localStorage.setItem('btc-treasury-auth', 'authenticated');
+    setIsAuthenticated(true);
+    setPage('deals');
+  };
 
   const handleLogout = () => {
-    setToken(null);
-    localStorage.removeItem('token');
+    localStorage.removeItem('btc-treasury-auth');
+    setIsAuthenticated(false);
     setPage('landing');
   };
 
@@ -51,26 +63,28 @@ export default function App() {
   return (
     <div className={`min-h-screen transition-colors ${dark ? 'dark bg-zinc-950' : 'bg-gray-50'}`}>
       <div className="font-sans text-gray-900 dark:text-gray-100">
-        {/* REMOVED NAVBAR SECTION */}
-
-        {/* Main Content */}
-        <main className="min-h-screen"> {/* Removed pt-20 since navbar is gone */}
+        <main className="min-h-screen">
           {currentPage === 'landing' && <Landing setPage={setPage} />}
-          {currentPage === 'login' && <Login setToken={setToken} setPage={setPage} />}
-          {currentPage === 'deals' && token && (
-            <DealsPage deals={deals} setDeals={setDeals} setPage={setPage} />
+          {currentPage === 'login' && <Login onSuccess={handleLoginSuccess} setPage={setPage} />}
+          {currentPage === 'deals' && isAuthenticated && (
+            <DealsPage 
+              deals={deals} 
+              setDeals={setDeals} 
+              setPage={setPage}
+              onLogout={handleLogout}
+            />
           )}
-          {currentPage === 'dealDetail' && token && dealId && (
+          {currentPage === 'dealDetail' && isAuthenticated && dealId && (
             <DealDetail
               dealId={dealId}
               deals={deals}
               setDeals={setDeals}
               setPage={setPage}
+              onLogout={handleLogout}
             />
           )}
         </main>
 
-        {/* Footer */}
         <footer className="py-8 text-center text-sm text-gray-500 dark:text-gray-400 border-t border-gray-200 dark:border-zinc-800">
           <p>© 2025 Block Three Capital LLC — For institutional clients and qualified investors only</p>
         </footer>
