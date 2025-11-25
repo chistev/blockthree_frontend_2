@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { authFetch } from '../auth';
+
 
 interface ObjectiveSwitches {
   max_btc: boolean;
@@ -98,7 +100,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
         return;
       }
       try {
-        const res = await fetch('http://localhost:8000/api/default_params/', {
+        const res = await authFetch('/api/default_params/', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -119,7 +121,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     const fetchPresets = async () => {
       if (!token) return;
       try {
-        const res = await fetch('http://localhost:8000/api/presets/', {
+        const res = await authFetch('/api/presets/', {
           headers: { Authorization: `Bearer ${token}` },
         });
         const data = await res.json();
@@ -137,7 +139,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
 
     const fetchLivePrice = async () => {
       try {
-        const res = await fetch('http://localhost:8000/api/btc_price/', {
+        const res = await authFetch('/api/btc_price/', {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (res.ok) {
@@ -163,7 +165,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     if (!token) return;
     try {
       setIsLoadingDefaults(true);
-      const res = await fetch('http://localhost:8000/api/default_params/', {
+      const res = await authFetch('/api/default_params/', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -226,7 +228,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
 
     setIsLoading(true);
     try {
-      const lockRes = await fetch('http://localhost:8000/api/lock_snapshot/', {
+      const lockRes = await authFetch('/api/lock_snapshot/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mode, assumptions }),
@@ -234,7 +236,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
       const lockData = await lockRes.json();
       if (!lockData.snapshot_id) throw new Error(lockData.error || 'Snapshot failed');
 
-      const calcRes = await fetch('http://localhost:8000/api/calculate/', {
+      const calcRes = await authFetch('/api/calculate/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({

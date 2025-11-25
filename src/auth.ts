@@ -1,3 +1,5 @@
+const API_BASE_URL = 'http://localhost:8000';
+
 export const getAuthToken = (): string | null => {
   return localStorage.getItem('authToken');
 };
@@ -14,8 +16,8 @@ export const isAuthenticated = (): boolean => {
   return !!getAuthToken();
 };
 
-// Helper for authenticated fetch requests
-export const authFetch = async (url: string, options: RequestInit = {}) => {
+// Helper for authenticated fetch requests with base URL
+export const authFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
@@ -26,7 +28,7 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  return fetch(url, {
+  return fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
   });

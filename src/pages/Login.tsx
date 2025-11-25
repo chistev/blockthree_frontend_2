@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { authFetch } from '../auth';
 
 interface Props {
   onSuccess: () => void;
@@ -26,7 +27,7 @@ export default function Login({ onSuccess, setPage }: Props) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/login/', {
+      const response = await authFetch('/api/login/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
