@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authFetch } from '../auth';
 
-
 interface ObjectiveSwitches {
   max_btc: boolean;
   min_dilution: boolean;
@@ -35,7 +34,7 @@ interface AssumptionsData {
   paths: number;
   jump_intensity: number;
   jump_mean: number;
-  jump_volatility: number;
+  jump_protection: number;
   min_profit_margin: number;
   annual_burn_rate: number;
   initial_cash: number;
@@ -76,12 +75,27 @@ interface AssumptionsProps {
   onCalculationComplete: (result: any) => void;
 }
 
+// Default objective switches — guarantees non-optional booleans
+const defaultObjectiveSwitches: ObjectiveSwitches = {
+  max_btc: true,
+  min_dilution: true,
+  min_ltv_breach: true,
+  max_runway: true,
+  max_nav: true,
+  min_wacc: true,
+};
+
 const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
   const [mode, setMode] = useState<'public' | 'private' | 'pro-forma'>('pro-forma');
-  const [assumptions, setAssumptions] = useState<Partial<AssumptionsData>>({});
+  const [assumptions, setAssumptions] = useState<Partial<AssumptionsData>>({
+    objective_switches: defaultObjectiveSwitches,
+    structure: 'Loan',
+    hedge_policy: 'none',
+    objective_preset: 'Balanced',
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDefaults, setIsLoadingDefaults] = useState(true);
-  const [presets, setPresets] = useState<any>({});
+  const [presets, setPresets] = useState<Record<string, any>>({});
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'bitcoin-market': true,
     'company-financials': true,
@@ -90,6 +104,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     'hedging': true,
     'constraints-objectives': true,
   });
+
   const token = localStorage.getItem('authToken');
 
   // Fetch defaults
@@ -105,7 +120,14 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
         });
         if (res.ok) {
           const data = await res.json();
-          setAssumptions(data);
+          setAssumptions(prev => ({
+            ...prev,
+            ...data,
+            objective_switches: {
+              ...defaultObjectiveSwitches,
+              ...(data.objective_switches ?? {}),
+            },
+          }));
         }
       } catch (err) {
         console.error('Error fetching defaults:', err);
@@ -133,7 +155,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     fetchPresets();
   }, [token]);
 
-  // AUTO-FETCH LIVE BTC PRICE once after defaults load
+  // Auto-fetch live BTC price once after defaults
   useEffect(() => {
     if (isLoadingDefaults || !token || Object.keys(assumptions).length === 0) return;
 
@@ -157,7 +179,6 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
         console.warn('Live BTC price fetch failed, using defaults');
       }
     };
-
     fetchLivePrice();
   }, [isLoadingDefaults, token]);
 
@@ -170,7 +191,14 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
-      setAssumptions(prev => ({ ...prev, ...data }));
+      setAssumptions(prev => ({
+        ...prev,
+        ...data,
+        objective_switches: {
+          ...defaultObjectiveSwitches,
+          ...(data.objective_switches ?? {}),
+        },
+      }));
     } catch (err) {
       console.error('Error loading defaults:', err);
     } finally {
@@ -209,8 +237,8 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     setAssumptions(prev => ({
       ...prev,
       objective_switches: {
-        ...prev.objective_switches,
-        [key]: !prev.objective_switches?.[key]
+        ...(prev.objective_switches ?? defaultObjectiveSwitches),
+        [key]: !(prev.objective_switches?.[key] ?? defaultObjectiveSwitches[key]),
       },
     }));
   };
@@ -218,7 +246,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
   const toggleSection = (sectionId: string) => {
     setExpandedSections(prev => ({
       ...prev,
-      [sectionId]: !prev[sectionId]
+      [sectionId]: !prev[sectionId],
     }));
   };
 
@@ -248,9 +276,9 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
           paths: assumptions.paths,
         }),
       });
-
       const result = await calcRes.json();
       if (result.error) throw new Error(result.error);
+
       onCalculationComplete(result);
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -270,7 +298,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     );
   }
 
-  if (Object.keys(assumptions).length === 0) {
+  if (!assumptions || Object.keys(assumptions).length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
         <div className="text-center">
@@ -298,7 +326,6 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
         </div>
 
         <form onSubmit={runSimulation} className="space-y-10">
-
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-white p-6 rounded-xl shadow border">
               <label className="block text-lg font-semibold mb-3">Calculation Mode</label>
@@ -327,7 +354,9 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
                     key={p}
                     type="button"
                     onClick={() => applyPreset(p)}
-                    className={`px-6 py-3 rounded-lg font-medium transition ${assumptions.objective_preset === p ? 'bg-orange-500 text-white' : 'bg-gray-200 hover:bg-gray-300'}`}
+                    className={`px-6 py-3 rounded-lg font-medium transition ${
+                      assumptions.objective_preset === p ? 'bg-orange-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
+                    }`}
                   >
                     {p}
                   </button>
@@ -337,13 +366,7 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
           </div>
 
           <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
-
-            <CollapsibleSection 
-              title="Bitcoin & Market" 
-              sectionId="bitcoin-market"
-              isExpanded={expandedSections['bitcoin-market']}
-              onToggle={toggleSection}
-            >
+            <CollapsibleSection title="Bitcoin & Market" sectionId="bitcoin-market" isExpanded={expandedSections['bitcoin-market']} onToggle={toggleSection}>
               <Input label="Current BTC Price ($)" name="BTC_current_market_price" value={assumptions.BTC_current_market_price || 0} onChange={handleChange} tooltip="Current market price of Bitcoin in USD." />
               <Input label="Target BTC Price ($)" name="targetBTCPrice" value={assumptions.targetBTCPrice || 0} onChange={handleChange} tooltip="Expected target price of Bitcoin at the end of the time horizon." />
               <Input label="BTC Treasury" name="BTC_treasury" value={assumptions.BTC_treasury || 0} onChange={handleChange} tooltip="The amount of Bitcoin currently held in the company's treasury." />
@@ -351,58 +374,38 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               <Input label="Drift (μ)" name="mu" value={assumptions.mu || 0} step="0.01" onChange={handleChange} tooltip="Expected annual return (drift) of Bitcoin." />
               <Input label="Volatility (σ)" name="sigma" value={assumptions.sigma || 0} step="0.01" onChange={handleChange} tooltip="Annualized volatility of Bitcoin returns." />
               <Input label="Time Horizon (y)" name="t" value={assumptions.t || 0} step="0.1" onChange={handleChange} tooltip="Time horizon for the simulation in years." />
-              <Input label="Dividend Yield δ" name="delta" value={assumptions.delta || 0} step="0.01" onChange={handleChange} tooltip="Dividend yield for Bitcoin (usually 0 for non-dividend assets)." />
-              <Input label="Manual IV" name="manual_iv" value={assumptions.manual_iv || 0} step="0.01" onChange={handleChange} tooltip="Manual implied volatility override for option pricing." />
+              <Input label="Dividend Yield δ" name="delta" value={assumptions.delta || 0} step="0.01" onChange={handleChange} tooltip="Dividend yield for Bitcoin (usually 0)." />
+              <Input label="Manual IV" name="manual_iv" value={assumptions.manual_iv || 0} step="0.01" onChange={handleChange} tooltip="Manual implied volatility override." />
             </CollapsibleSection>
 
-            <CollapsibleSection 
-              title="Company Financials" 
-              sectionId="company-financials"
-              isExpanded={expandedSections['company-financials']}
-              onToggle={toggleSection}
-            >
-              <Input label="Initial Equity Value ($)" name="initial_equity_value" value={assumptions.initial_equity_value || 0} onChange={handleChange} tooltip="Initial market value of the company's equity." />
-              <Input label="Initial Cash ($)" name="initial_cash" value={assumptions.initial_cash || 0} onChange={handleChange} tooltip="Initial cash balance of the company." />
-              <Input label="Shares Basic" name="shares_basic" value={assumptions.shares_basic || 0} onChange={handleChange} tooltip="Number of basic shares outstanding." />
-              <Input label="Shares FD" name="shares_fd" value={assumptions.shares_fd || 0} onChange={handleChange} tooltip="Number of fully diluted shares." />
-              <Input label="Monthly OpEx ($)" name="opex_monthly" value={assumptions.opex_monthly || 0} onChange={handleChange} tooltip="Monthly operating expenses." />
-              <Input label="Tax Rate (%)" name="tax_rate" value={(assumptions.tax_rate || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, tax_rate: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Corporate tax rate as a percentage." />
-              <Input label="NOLs ($)" name="nols" value={assumptions.nols || 0} onChange={handleChange} tooltip="Net operating losses carryforward." />
+            <CollapsibleSection title="Company Financials" sectionId="company-financials" isExpanded={expandedSections['company-financials']} onToggle={toggleSection}>
+              <Input label="Initial Equity Value ($)" name="initial_equity_value" value={assumptions.initial_equity_value || 0} onChange={handleChange} />
+              <Input label="Initial Cash ($)" name="initial_cash" value={assumptions.initial_cash || 0} onChange={handleChange} />
+              <Input label="Shares Basic" name="shares_basic" value={assumptions.shares_basic || 0} onChange={handleChange} />
+              <Input label="Shares FD" name="shares_fd" value={assumptions.shares_fd || 0} onChange={handleChange} />
+              <Input label="Monthly OpEx ($)" name="opex_monthly" value={assumptions.opex_monthly || 0} onChange={handleChange} />
+              <Input label="Tax Rate (%)" name="tax_rate" value={(assumptions.tax_rate ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, tax_rate: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="NOLs ($)" name="nols" value={assumptions.nols || 0} onChange={handleChange} />
             </CollapsibleSection>
 
-            <CollapsibleSection 
-              title="Funding Parameters" 
-              sectionId="funding-parameters"
-              isExpanded={expandedSections['funding-parameters']}
-              onToggle={toggleSection}
-            >
-              <Input label="Loan Principal ($)" name="LoanPrincipal" value={assumptions.LoanPrincipal || 0} onChange={handleChange} tooltip="Principal amount of the loan." />
-              <Input label="New Equity Raised ($)" name="new_equity_raised" value={assumptions.new_equity_raised || 0} onChange={handleChange} tooltip="Amount of new equity to be raised." />
-              <Input label="Cost of Debt (%)" name="cost_of_debt" value={(assumptions.cost_of_debt || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, cost_of_debt: parseFloat(e.target.value) / 100 }))} step="0.1" tooltip="Annual cost of debt as a percentage." />
-              <Input label="LTV Cap (%)" name="LTV_Cap" value={(assumptions.LTV_Cap || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, LTV_Cap: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Maximum loan-to-value ratio cap." />
-              <Input label="PIPE Discount (%)" name="pipe_discount" value={(assumptions.pipe_discount || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, pipe_discount: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Discount applied to PIPE transactions." />
-              <Input label="ADV 30d ($)" name="adv_30d" value={assumptions.adv_30d || 0} onChange={handleChange} tooltip="Average daily volume over the last 30 days." />
-              <Input label="ATM % of ADV" name="atm_pct_adv" value={(assumptions.atm_pct_adv || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, atm_pct_adv: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Percentage of ADV for ATM equity issuance." />
+            <CollapsibleSection title="Funding Parameters" sectionId="funding-parameters" isExpanded={expandedSections['funding-parameters']} onToggle={toggleSection}>
+              <Input label="Loan Principal ($)" name="LoanPrincipal" value={assumptions.LoanPrincipal || 0} onChange={handleChange} />
+              <Input label="New Equity Raised ($)" name="new_equity_raised" value={assumptions.new_equity_raised || 0} onChange={handleChange} />
+              <Input label="Cost of Debt (%)" name="cost_of_debt" value={(assumptions.cost_of_debt ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, cost_of_debt: parseFloat(e.target.value) / 100 }))} step="0.1" />
+              <Input label="LTV Cap (%)" name="LTV_Cap" value={(assumptions.LTV_Cap ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, LTV_Cap: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="PIPE Discount (%)" name="pipe_discount" value={(assumptions.pipe_discount ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, pipe_discount: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="ADV 30d ($)" name="adv_30d" value={assumptions.adv_30d || 0} onChange={handleChange} />
+              <Input label="ATM % of ADV" name="atm_pct_adv" value={(assumptions.atm_pct_adv ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, atm_pct_adv: parseFloat(e.target.value) / 100 }))} step="1" />
             </CollapsibleSection>
 
-            <CollapsibleSection 
-              title="Risk & Collateral" 
-              sectionId="risk-collateral"
-              isExpanded={expandedSections['risk-collateral']}
-              onToggle={toggleSection}
-            >
-              <Input label="Haircut H0 (%)" name="haircut_h0" value={(assumptions.haircut_h0 || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, haircut_h0: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Base haircut percentage for collateral." />
-              <Input label="Haircut Alpha" name="haircut_alpha" value={assumptions.haircut_alpha || 0} step="0.01" onChange={handleChange} tooltip="Sensitivity of haircut to volatility." />
-              <Input label="Liquidation Penalty (bps)" name="liquidation_penalty_bps" value={assumptions.liquidation_penalty_bps || 0} onChange={handleChange} tooltip="Penalty in basis points for forced liquidation." />
-              <Input label="Cure Period (days)" name="cure_period_days" value={assumptions.cure_period_days || 0} onChange={handleChange} tooltip="Number of days to cure a breach before liquidation." />
+            <CollapsibleSection title="Risk & Collateral" sectionId="risk-collateral" isExpanded={expandedSections['risk-collateral']} onToggle={toggleSection}>
+              <Input label="Haircut H0 (%)" name="haircut_h0" value={(assumptions.haircut_h0 ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, haircut_h0: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="Haircut Alpha" name="haircut_alpha" value={assumptions.haircut_alpha || 0} step="0.01" onChange={handleChange} />
+              <Input label="Liquidation Penalty (bps)" name="liquidation_penalty_bps" value={assumptions.liquidation_penalty_bps || 0} onChange={handleChange} />
+              <Input label="Cure Period (days)" name="cure_period_days" value={assumptions.cure_period_days || 0} onChange={handleChange} />
             </CollapsibleSection>
 
-            <CollapsibleSection 
-              title="Hedging" 
-              sectionId="hedging"
-              isExpanded={expandedSections['hedging']}
-              onToggle={toggleSection}
-            >
+            <CollapsibleSection title="Hedging" sectionId="hedging" isExpanded={expandedSections['hedging']} onToggle={toggleSection}>
               <div className="mb-4">
                 <label className="block font-medium mb-2">Hedge Policy</label>
                 <select name="hedge_policy" value={assumptions.hedge_policy || ''} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg">
@@ -410,27 +413,23 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
                   <option value="protective_put">Protective Put</option>
                 </select>
               </div>
-              <Input label="Hedge Intensity (%)" name="hedge_intensity" value={(assumptions.hedge_intensity || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, hedge_intensity: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Percentage of portfolio to hedge." />
-              <Input label="Hedge Tenor (days)" name="hedge_tenor_days" value={assumptions.hedge_tenor_days || 0} onChange={handleChange} tooltip="Duration of the hedge in days." />
+              <Input label="Hedge Intensity (%)" name="hedge_intensity" value={(assumptions.hedge_intensity ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, hedge_intensity: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="Hedge Tenor (days)" name="hedge_tenor_days" value={assumptions.hedge_tenor_days || 0} onChange={handleChange} />
             </CollapsibleSection>
 
-            <CollapsibleSection 
-              title="Constraints & Objectives" 
-              sectionId="constraints-objectives"
-              isExpanded={expandedSections['constraints-objectives']}
-              onToggle={toggleSection}
-            >
-              <Input label="Max Dilution (%)" name="max_dilution" value={(assumptions.max_dilution || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_dilution: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Maximum allowed dilution percentage." />
-              <Input label="Min Runway (months)" name="min_runway_months" value={assumptions.min_runway_months || 0} onChange={handleChange} tooltip="Minimum required cash runway in months." />
-              <Input label="Max LTV Breach Prob (%)" name="max_breach_prob" value={(assumptions.max_breach_prob || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_breach_prob: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Maximum probability of LTV breach." />
+            <CollapsibleSection title="Constraints & Objectives" sectionId="constraints-objectives" isExpanded={expandedSections['constraints-objectives']} onToggle={toggleSection}>
+              <Input label="Max Dilution (%)" name="max_dilution" value={(assumptions.max_dilution ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_dilution: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="Min Runway (months)" name="min_runway_months" value={assumptions.min_runway_months || 0} onChange={handleChange} />
+              <Input label="Max LTV Breach Prob (%)" name="max_breach_prob" value={(assumptions.max_breach_prob ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_breach_prob: parseFloat(e.target.value) / 100 }))} step="1" />
+
               <div className="pt-4">
                 <h3 className="font-medium mb-3">Optimization Objectives</h3>
                 <div className="grid grid-cols-2 gap-3">
-                  {Object.keys(assumptions.objective_switches || {}).map(key => (
+                  {Object.keys(assumptions.objective_switches || defaultObjectiveSwitches).map(key => (
                     <label key={key} className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={assumptions.objective_switches?.[key as keyof ObjectiveSwitches] || false}
+                        checked={assumptions.objective_switches?.[key as keyof ObjectiveSwitches] ?? true}
                         onChange={() => toggleObjective(key as keyof ObjectiveSwitches)}
                         className="w-5 h-5 text-orange-500 rounded"
                       />
@@ -440,14 +439,15 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
                 </div>
               </div>
             </CollapsibleSection>
-
           </div>
 
           <div className="flex justify-center mt-12">
             <button
               type="submit"
               disabled={isLoading}
-              className={`px-16 py-6 text-2xl font-bold text-white rounded-xl shadow-lg transition ${isLoading ? 'bg-orange-400' : 'bg-orange-500 hover:bg-orange-600'}`}
+              className={`px-16 py-6 text-2xl font-bold text-white rounded-xl shadow-lg transition ${
+                isLoading ? 'bg-orange-400' : 'bg-orange-500 hover:bg-orange-600'
+              }`}
             >
               {isLoading ? 'Running Simulation...' : 'Run Optimization'}
             </button>
@@ -458,35 +458,27 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
   );
 };
 
+// Reusable Components
 const CollapsibleSection: React.FC<{
   title: string;
   sectionId: string;
   isExpanded: boolean;
-  onToggle: (sectionId: string) => void;
+  onToggle: (id: string) => void;
   children: React.ReactNode;
 }> = ({ title, sectionId, isExpanded, onToggle, children }) => (
-  <div className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${
-    isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-16 opacity-90'
-  } overflow-hidden`}>
+  <div className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${isExpanded ? 'max-h-[2000px]' : 'max-h-16'} overflow-hidden`}>
     <button
       type="button"
       onClick={() => onToggle(sectionId)}
       className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
     >
       <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-      <svg
-        className={`w-5 h-5 text-gray-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
+      <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
     </button>
-    <div className={`transition-all duration-300 ${isExpanded ? 'block' : 'hidden'}`}>
-      <div className="px-6 pb-6 space-y-4">
-        {children}
-      </div>
+    <div className={`px-6 pb-6 space-y-4 ${isExpanded ? 'block' : 'hidden'}`}>
+      {children}
     </div>
   </div>
 );
@@ -500,10 +492,10 @@ const Input: React.FC<{
   tooltip?: string;
 }> = ({ label, name, value, step = 'any', onChange, tooltip }) => (
   <div>
-    <label className="block text-sm font-medium text-gray-700 flex items-center">
+    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
       {label}
       {tooltip && (
-        <span className="ml-2 text-gray-400 cursor-help text-xs w-4 h-4 flex items-center justify-center rounded-full border border-gray-400" title={tooltip}>
+        <span className="text-xs w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center cursor-help" title={tooltip}>
           ?
         </span>
       )}
@@ -517,13 +509,6 @@ const Input: React.FC<{
       className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
     />
   </div>
-);
-
-const Checkbox: React.FC<{ label: string; name: string; checked: boolean; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }> = ({ label, name, checked, onChange }) => (
-  <label className="flex items-center space-x-3 cursor-pointer">
-    <input type="checkbox" name={name} checked={checked} onChange={onChange} className="w-5 h-5 text-orange-500 rounded" />
-    <span>{label}</span>
-  </label>
 );
 
 export default Assumptions;

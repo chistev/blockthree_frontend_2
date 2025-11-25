@@ -14,6 +14,40 @@ export default function Login({ onSuccess, setPage }: Props) {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Add this useEffect to inject the styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
+        20%, 40%, 60%, 80% { transform: translateX(8px); }
+      }
+      .shake { animation: shake 0.6s ease-in-out; }
+      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+      .animate-fade-in { animation: fade-in 0.3s ease-out; }
+      
+      input[type="password"] {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        color: #111827 !important;
+        letter-spacing: 0.1em !important;
+      }
+      
+      input[type="text"] {
+        font-size: 18px !important;
+        font-weight: 600 !important;
+        color: #111827 !important;
+        letter-spacing: 0.05em !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   // Auto-focus on mount
   useEffect(() => {
     if (inputRef.current) {
@@ -106,12 +140,6 @@ export default function Login({ onSuccess, setPage }: Props) {
                   required
                   disabled={isLoading}
                   autoComplete="current-password"
-                  style={{
-                    fontSize: '18px',
-                    fontWeight: '500',
-                    color: '#111827', // gray-900
-                    letterSpacing: '0.05em'
-                  }}
                 />
                 
                 {/* Password visibility toggle */}
@@ -209,32 +237,6 @@ export default function Login({ onSuccess, setPage }: Props) {
           </button>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-8px); }
-          20%, 40%, 60%, 80% { transform: translateX(8px); }
-        }
-        .shake { animation: shake 0.6s ease-in-out; }
-        @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fade-in { animation: fade-in 0.3s ease-out; }
-        
-        /* Make password dots/characters more visible */
-        input[type="password"] {
-          font-size: 18px !important;
-          font-weight: 600 !important;
-          color: #111827 !important;
-          letter-spacing: 0.1em !important;
-        }
-        
-        input[type="text"] {
-          font-size: 18px !important;
-          font-weight: 600 !important;
-          color: #111827 !important;
-          letter-spacing: 0.05em !important;
-        }
-      `}</style>
     </div>
   );
 }

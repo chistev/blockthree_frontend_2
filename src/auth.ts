@@ -16,12 +16,16 @@ export const isAuthenticated = (): boolean => {
   return !!getAuthToken();
 };
 
-// Helper for authenticated fetch requests with base URL
+interface HeadersInit {
+  [key: string]: string;
+}
+
 export const authFetch = async (endpoint: string, options: RequestInit = {}) => {
   const token = getAuthToken();
-  const headers = {
+  
+  const headers: HeadersInit = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as HeadersInit),
   };
 
   if (token) {
