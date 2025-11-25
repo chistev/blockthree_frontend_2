@@ -342,15 +342,15 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               isExpanded={expandedSections['bitcoin-market']}
               onToggle={toggleSection}
             >
-              <Input label="Current BTC Price ($)" name="BTC_current_market_price" value={assumptions.BTC_current_market_price || 0} onChange={handleChange} />
-              <Input label="Target BTC Price ($)" name="targetBTCPrice" value={assumptions.targetBTCPrice || 0} onChange={handleChange} />
-              <Input label="BTC Treasury" name="BTC_treasury" value={assumptions.BTC_treasury || 0} onChange={handleChange} />
-              <Input label="Issue Price ($)" name="IssuePrice" value={assumptions.IssuePrice || 0} onChange={handleChange} />
-              <Input label="Drift (μ)" name="mu" value={assumptions.mu || 0} step="0.01" onChange={handleChange} />
-              <Input label="Volatility (σ)" name="sigma" value={assumptions.sigma || 0} step="0.01" onChange={handleChange} />
-              <Input label="Time Horizon (y)" name="t" value={assumptions.t || 0} step="0.1" onChange={handleChange} />
-              <Input label="Dividend Yield δ" name="delta" value={assumptions.delta || 0} step="0.01" onChange={handleChange} />
-              <Input label="Manual IV" name="manual_iv" value={assumptions.manual_iv || 0} step="0.01" onChange={handleChange} />
+              <Input label="Current BTC Price ($)" name="BTC_current_market_price" value={assumptions.BTC_current_market_price || 0} onChange={handleChange} tooltip="Current market price of Bitcoin in USD." />
+              <Input label="Target BTC Price ($)" name="targetBTCPrice" value={assumptions.targetBTCPrice || 0} onChange={handleChange} tooltip="Expected target price of Bitcoin at the end of the time horizon." />
+              <Input label="BTC Treasury" name="BTC_treasury" value={assumptions.BTC_treasury || 0} onChange={handleChange} tooltip="The amount of Bitcoin currently held in the company's treasury." />
+              <Input label="Issue Price ($)" name="IssuePrice" value={assumptions.IssuePrice || 0} onChange={handleChange} tooltip="The price at which new securities are issued." />
+              <Input label="Drift (μ)" name="mu" value={assumptions.mu || 0} step="0.01" onChange={handleChange} tooltip="Expected annual return (drift) of Bitcoin." />
+              <Input label="Volatility (σ)" name="sigma" value={assumptions.sigma || 0} step="0.01" onChange={handleChange} tooltip="Annualized volatility of Bitcoin returns." />
+              <Input label="Time Horizon (y)" name="t" value={assumptions.t || 0} step="0.1" onChange={handleChange} tooltip="Time horizon for the simulation in years." />
+              <Input label="Dividend Yield δ" name="delta" value={assumptions.delta || 0} step="0.01" onChange={handleChange} tooltip="Dividend yield for Bitcoin (usually 0 for non-dividend assets)." />
+              <Input label="Manual IV" name="manual_iv" value={assumptions.manual_iv || 0} step="0.01" onChange={handleChange} tooltip="Manual implied volatility override for option pricing." />
             </CollapsibleSection>
 
             <CollapsibleSection 
@@ -359,13 +359,13 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               isExpanded={expandedSections['company-financials']}
               onToggle={toggleSection}
             >
-              <Input label="Initial Equity Value ($)" name="initial_equity_value" value={assumptions.initial_equity_value || 0} onChange={handleChange} />
-              <Input label="Initial Cash ($)" name="initial_cash" value={assumptions.initial_cash || 0} onChange={handleChange} />
-              <Input label="Shares Basic" name="shares_basic" value={assumptions.shares_basic || 0} onChange={handleChange} />
-              <Input label="Shares FD" name="shares_fd" value={assumptions.shares_fd || 0} onChange={handleChange} />
-              <Input label="Monthly OpEx ($)" name="opex_monthly" value={assumptions.opex_monthly || 0} onChange={handleChange} />
-              <Input label="Tax Rate (%)" name="tax_rate" value={(assumptions.tax_rate || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, tax_rate: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="NOLs ($)" name="nols" value={assumptions.nols || 0} onChange={handleChange} />
+              <Input label="Initial Equity Value ($)" name="initial_equity_value" value={assumptions.initial_equity_value || 0} onChange={handleChange} tooltip="Initial market value of the company's equity." />
+              <Input label="Initial Cash ($)" name="initial_cash" value={assumptions.initial_cash || 0} onChange={handleChange} tooltip="Initial cash balance of the company." />
+              <Input label="Shares Basic" name="shares_basic" value={assumptions.shares_basic || 0} onChange={handleChange} tooltip="Number of basic shares outstanding." />
+              <Input label="Shares FD" name="shares_fd" value={assumptions.shares_fd || 0} onChange={handleChange} tooltip="Number of fully diluted shares." />
+              <Input label="Monthly OpEx ($)" name="opex_monthly" value={assumptions.opex_monthly || 0} onChange={handleChange} tooltip="Monthly operating expenses." />
+              <Input label="Tax Rate (%)" name="tax_rate" value={(assumptions.tax_rate || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, tax_rate: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Corporate tax rate as a percentage." />
+              <Input label="NOLs ($)" name="nols" value={assumptions.nols || 0} onChange={handleChange} tooltip="Net operating losses carryforward." />
             </CollapsibleSection>
 
             <CollapsibleSection 
@@ -374,13 +374,13 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               isExpanded={expandedSections['funding-parameters']}
               onToggle={toggleSection}
             >
-              <Input label="Loan Principal ($)" name="LoanPrincipal" value={assumptions.LoanPrincipal || 0} onChange={handleChange} />
-              <Input label="New Equity Raised ($)" name="new_equity_raised" value={assumptions.new_equity_raised || 0} onChange={handleChange} />
-              <Input label="Cost of Debt (%)" name="cost_of_debt" value={(assumptions.cost_of_debt || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, cost_of_debt: parseFloat(e.target.value) / 100 }))} step="0.1" />
-              <Input label="LTV Cap (%)" name="LTV_Cap" value={(assumptions.LTV_Cap || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, LTV_Cap: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="PIPE Discount (%)" name="pipe_discount" value={(assumptions.pipe_discount || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, pipe_discount: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="ADV 30d ($)" name="adv_30d" value={assumptions.adv_30d || 0} onChange={handleChange} />
-              <Input label="ATM % of ADV" name="atm_pct_adv" value={(assumptions.atm_pct_adv || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, atm_pct_adv: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="Loan Principal ($)" name="LoanPrincipal" value={assumptions.LoanPrincipal || 0} onChange={handleChange} tooltip="Principal amount of the loan." />
+              <Input label="New Equity Raised ($)" name="new_equity_raised" value={assumptions.new_equity_raised || 0} onChange={handleChange} tooltip="Amount of new equity to be raised." />
+              <Input label="Cost of Debt (%)" name="cost_of_debt" value={(assumptions.cost_of_debt || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, cost_of_debt: parseFloat(e.target.value) / 100 }))} step="0.1" tooltip="Annual cost of debt as a percentage." />
+              <Input label="LTV Cap (%)" name="LTV_Cap" value={(assumptions.LTV_Cap || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, LTV_Cap: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Maximum loan-to-value ratio cap." />
+              <Input label="PIPE Discount (%)" name="pipe_discount" value={(assumptions.pipe_discount || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, pipe_discount: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Discount applied to PIPE transactions." />
+              <Input label="ADV 30d ($)" name="adv_30d" value={assumptions.adv_30d || 0} onChange={handleChange} tooltip="Average daily volume over the last 30 days." />
+              <Input label="ATM % of ADV" name="atm_pct_adv" value={(assumptions.atm_pct_adv || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, atm_pct_adv: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Percentage of ADV for ATM equity issuance." />
             </CollapsibleSection>
 
             <CollapsibleSection 
@@ -389,10 +389,10 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               isExpanded={expandedSections['risk-collateral']}
               onToggle={toggleSection}
             >
-              <Input label="Haircut H0 (%)" name="haircut_h0" value={(assumptions.haircut_h0 || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, haircut_h0: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="Haircut Alpha" name="haircut_alpha" value={assumptions.haircut_alpha || 0} step="0.01" onChange={handleChange} />
-              <Input label="Liquidation Penalalty (bps)" name="liquidation_penalty_bps" value={assumptions.liquidation_penalty_bps || 0} onChange={handleChange} />
-              <Input label="Cure Period (days)" name="cure_period_days" value={assumptions.cure_period_days || 0} onChange={handleChange} />
+              <Input label="Haircut H0 (%)" name="haircut_h0" value={(assumptions.haircut_h0 || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, haircut_h0: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Base haircut percentage for collateral." />
+              <Input label="Haircut Alpha" name="haircut_alpha" value={assumptions.haircut_alpha || 0} step="0.01" onChange={handleChange} tooltip="Sensitivity of haircut to volatility." />
+              <Input label="Liquidation Penalty (bps)" name="liquidation_penalty_bps" value={assumptions.liquidation_penalty_bps || 0} onChange={handleChange} tooltip="Penalty in basis points for forced liquidation." />
+              <Input label="Cure Period (days)" name="cure_period_days" value={assumptions.cure_period_days || 0} onChange={handleChange} tooltip="Number of days to cure a breach before liquidation." />
             </CollapsibleSection>
 
             <CollapsibleSection 
@@ -408,8 +408,8 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
                   <option value="protective_put">Protective Put</option>
                 </select>
               </div>
-              <Input label="Hedge Intensity (%)" name="hedge_intensity" value={(assumptions.hedge_intensity || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, hedge_intensity: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="Hedge Tenor (days)" name="hedge_tenor_days" value={assumptions.hedge_tenor_days || 0} onChange={handleChange} />
+              <Input label="Hedge Intensity (%)" name="hedge_intensity" value={(assumptions.hedge_intensity || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, hedge_intensity: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Percentage of portfolio to hedge." />
+              <Input label="Hedge Tenor (days)" name="hedge_tenor_days" value={assumptions.hedge_tenor_days || 0} onChange={handleChange} tooltip="Duration of the hedge in days." />
             </CollapsibleSection>
 
             <CollapsibleSection 
@@ -418,9 +418,9 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               isExpanded={expandedSections['constraints-objectives']}
               onToggle={toggleSection}
             >
-              <Input label="Max Dilution (%)" name="max_dilution" value={(assumptions.max_dilution || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_dilution: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="Min Runway (months)" name="min_runway_months" value={assumptions.min_runway_months || 0} onChange={handleChange} />
-              <Input label="Max LTV Breach Prob (%)" name="max_breach_prob" value={(assumptions.max_breach_prob || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_breach_prob: parseFloat(e.target.value) / 100 }))} step="1" />
+              <Input label="Max Dilution (%)" name="max_dilution" value={(assumptions.max_dilution || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_dilution: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Maximum allowed dilution percentage." />
+              <Input label="Min Runway (months)" name="min_runway_months" value={assumptions.min_runway_months || 0} onChange={handleChange} tooltip="Minimum required cash runway in months." />
+              <Input label="Max LTV Breach Prob (%)" name="max_breach_prob" value={(assumptions.max_breach_prob || 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_breach_prob: parseFloat(e.target.value) / 100 }))} step="1" tooltip="Maximum probability of LTV breach." />
               <div className="pt-4">
                 <h3 className="font-medium mb-3">Optimization Objectives</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -495,9 +495,17 @@ const Input: React.FC<{
   value: number | string;
   step?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}> = ({ label, name, value, step = 'any', onChange }) => (
+  tooltip?: string;
+}> = ({ label, name, value, step = 'any', onChange, tooltip }) => (
   <div>
-    <label className="block text-sm font-medium text-gray-700">{label}</label>
+    <label className="block text-sm font-medium text-gray-700 flex items-center">
+      {label}
+      {tooltip && (
+        <span className="ml-2 text-gray-400 cursor-help text-xs w-4 h-4 flex items-center justify-center rounded-full border border-gray-400" title={tooltip}>
+          ?
+        </span>
+      )}
+    </label>
     <input
       type="number"
       name={name}
