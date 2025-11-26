@@ -104,8 +104,14 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     'hedging': true,
     'constraints-objectives': true,
   });
+  const [error, setError] = useState<string | null>(null);
 
   const token = localStorage.getItem('authToken');
+
+  // Clear error when component mounts or mode changes
+  useEffect(() => {
+    setError(null);
+  }, [mode]);
 
   // Fetch defaults
   useEffect(() => {
@@ -128,9 +134,13 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
               ...(data.objective_switches ?? {}),
             },
           }));
+        } else {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to fetch defaults');
         }
       } catch (err) {
         console.error('Error fetching defaults:', err);
+        setError('Failed to load default parameters');
       } finally {
         setIsLoadingDefaults(false);
       }
@@ -146,10 +156,16 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
         const res = await authFetch('/api/presets/', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const data = await res.json();
-        setPresets(data);
+        if (res.ok) {
+          const data = await res.json();
+          setPresets(data);
+        } else {
+          const errorData = await res.json();
+          throw new Error(errorData.error || 'Failed to fetch presets');
+        }
       } catch (err) {
         console.error('Error fetching presets:', err);
+        setError('Failed to load risk presets');
       }
     };
     fetchPresets();
@@ -186,21 +202,28 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
     if (!token) return;
     try {
       setIsLoadingDefaults(true);
+      setError(null);
       const res = await authFetch('/api/default_params/', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-      const data = await res.json();
-      setAssumptions(prev => ({
-        ...prev,
-        ...data,
-        objective_switches: {
-          ...defaultObjectiveSwitches,
-          ...(data.objective_switches ?? {}),
-        },
-      }));
-    } catch (err) {
+      if (res.ok) {
+        const data = await res.json();
+        setAssumptions(prev => ({
+          ...prev,
+          ...data,
+          objective_switches: {
+            ...defaultObjectiveSwitches,
+            ...(data.objective_switches ?? {}),
+          },
+        }));
+      } else {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to load defaults');
+      }
+    } catch (err: any) {
       console.error('Error loading defaults:', err);
+      setError(err.message || 'Failed to reload default parameters');
     } finally {
       setIsLoadingDefaults(false);
     }
@@ -208,7 +231,10 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
 
   const applyPreset = (presetName: string) => {
     const p = presets[presetName];
-    if (!p) return;
+    if (!p) {
+      setError(`Preset "${presetName}" not found`);
+      return;
+    }
     setAssumptions(prev => ({
       ...prev,
       LTV_Cap: p.LTV_Cap,
@@ -252,17 +278,30 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
 
   const runSimulation = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!token) return alert('Not authenticated');
+    if (!token) {
+      setError('Not authenticated');
+      return;
+    }
 
     setIsLoading(true);
+    setError(null);
+    
     try {
       const lockRes = await authFetch('/api/lock_snapshot/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ mode, assumptions }),
       });
+      
+      if (!lockRes.ok) {
+        const errorData = await lockRes.json();
+        throw new Error(errorData.error || 'Failed to create snapshot');
+      }
+      
       const lockData = await lockRes.json();
-      if (!lockData.snapshot_id) throw new Error(lockData.error || 'Snapshot failed');
+      if (!lockData.snapshot_id) {
+        throw new Error(lockData.error || 'Snapshot creation failed');
+      }
 
       const calcRes = await authFetch('/api/calculate/', {
         method: 'POST',
@@ -276,12 +315,23 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
           paths: assumptions.paths,
         }),
       });
+
+      if (!calcRes.ok) {
+        const errorData = await calcRes.json();
+        throw new Error(errorData.error || 'Calculation failed');
+      }
+
       const result = await calcRes.json();
-      if (result.error) throw new Error(result.error);
+      if (result.error) {
+        throw new Error(result.error);
+      }
 
       onCalculationComplete(result);
+      
     } catch (err: any) {
-      alert('Error: ' + err.message);
+      console.error('Simulation error:', err);
+      const errorMessage = err.message || 'An unexpected error occurred during simulation';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -313,6 +363,76 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
+      {/* Error Display */}
+      {error && (
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Simulation Error</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="mt-2 text-sm text-red-800 hover:text-red-900 font-medium"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl">
+            <div className="text-center">
+              {/* Enhanced Loading Animation */}
+              <div className="relative inline-block mb-6">
+                <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                  <div className="w-8 h-8 bg-orange-500 rounded-full animate-pulse"></div>
+                </div>
+              </div>
+              
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Running Simulation</h3>
+              <p className="text-gray-600 mb-4">This may take a few minutes...</p>
+              
+              {/* Progress Steps */}
+              <div className="space-y-3 text-sm text-gray-500">
+                <div className="flex items-center justify-between">
+                  <span>Creating snapshot...</span>
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Simulating BTC paths...</span>
+                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Running optimization...</span>
+                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Calculating metrics...</span>
+                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
+                </div>
+              </div>
+              
+              {/* Estimated Time */}
+              <div className="mt-6 p-3 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500">
+                  ⏱️ Estimated time: 90-180 seconds
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <h1 className="text-4xl font-bold text-gray-900">Treasury Risk Calculator</h1>
@@ -445,11 +565,23 @@ const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
             <button
               type="submit"
               disabled={isLoading}
-              className={`px-16 py-6 text-2xl font-bold text-white rounded-xl shadow-lg transition ${
-                isLoading ? 'bg-orange-400' : 'bg-orange-500 hover:bg-orange-600'
+              className={`px-16 py-6 text-2xl font-bold text-white rounded-xl shadow-lg transition-all duration-300 ${
+                isLoading 
+                  ? 'bg-orange-400 cursor-not-allowed transform scale-95' 
+                  : 'bg-orange-500 hover:bg-orange-600 hover:scale-105'
               }`}
             >
-              {isLoading ? 'Running Simulation...' : 'Run Optimization'}
+              {isLoading ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Running...
+                </span>
+              ) : (
+                'Run Optimization'
+              )}
             </button>
           </div>
         </form>
