@@ -1,646 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import { authFetch } from '../auth';
+// src/pages/Assumptions.tsx
+import React, { useState } from 'react';
+import AssumptionGrid from './AssumptionGrid';
 
-interface ObjectiveSwitches {
-  max_btc: boolean;
-  min_dilution: boolean;
-  min_ltv_breach: boolean;
-  max_runway: boolean;
-  max_nav: boolean;
-  min_wacc: boolean;
-}
+const Card = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => (
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    {children}
+  </div>
+);
 
-interface AssumptionsData {
-  BTC_treasury: number;
-  BTC_purchased: number;
-  BTC_current_market_price: number;
-  targetBTCPrice: number;
-  IssuePrice: number;
-  mu: number;
-  sigma: number;
-  t: number;
-  delta: number;
-  initial_equity_value: number;
-  new_equity_raised: number;
-  LoanPrincipal: number;
-  cost_of_debt: number;
-  dilution_vol_estimate: number;
-  LTV_Cap: number;
-  beta_ROE: number;
-  expected_return_btc: number;
-  risk_free_rate: number;
-  vol_mean_reversion_speed: number;
-  long_run_volatility: number;
-  paths: number;
-  jump_intensity: number;
-  jump_mean: number;
-  jump_protection: number;
-  min_profit_margin: number;
-  annual_burn_rate: number;
-  initial_cash: number;
-  shares_basic: number;
-  shares_fd: number;
-  opex_monthly: number;
-  tax_rate: number;
-  nols: number;
-  adv_30d: number;
-  atm_pct_adv: number;
-  pipe_discount: number;
-  fees_ecm: number;
-  fees_oid: number;
-  cure_period_days: number;
-  haircut_h0: number;
-  haircut_alpha: number;
-  liquidation_penalty_bps: number;
-  hedge_policy: string;
-  hedge_intensity: number;
-  hedge_tenor_days: number;
-  manual_iv: number;
-  structure: string;
-  objective_preset: string;
-  cvar_on: boolean;
-  max_dilution: number;
-  min_runway_months: number;
-  max_breach_prob: number;
-  use_variance_reduction: boolean;
-  bootstrap_samples: number;
-  opex_stress_volatility: number;
-  objective_switches: ObjectiveSwitches;
-  nsga_pop_size: number;
-  nsga_n_gen: number;
-  enable_hybrid: boolean;
-}
+const SectionTitle: React.FC<{ children: React.ReactNode; className?: string }> = ({
+  children,
+  className = ''
+}) => (
+  <h2 className={`text-lg font-semibold text-gray-900 ${className}`}>
+    {children}
+  </h2>
+);
 
-interface AssumptionsProps {
-  onCalculationComplete: (result: any) => void;
-}
+const groups = [
+  {
+    title: 'Company & Balance Sheet',
+    fields: [
+      'initial_equity_value',
+      'initial_cash',
+      'BTC_treasury',
+      'shares_basic',
+      'shares_fd',
+      'opex_monthly',
+      'annual_burn_rate',
+      'tax_rate',
+      'nols',
+    ],
+  },
+  {
+    title: 'Market & BTC Process',
+    fields: [
+      'BTC_current_market_price',
+      'targetBTCPrice',
+      'mu',
+      'sigma',
+      't',
+      'risk_free_rate',
+      'expected_return_btc',
+      'delta',
+    ],
+  },
+  {
+    title: 'Capital Structure & Routes',
+    fields: [
+      'structure',
+      'LoanPrincipal',
+      'new_equity_raised',
+      'cost_of_debt',
+      'IssuePrice',
+      'adv_30d',
+      'atm_pct_adv',
+      'pipe_discount',
+      'fees_ecm',
+      'fees_oid',
+    ],
+  },
+  {
+    title: 'Risk Constraints / Covenants',
+    fields: [
+      'LTV_Cap',
+      'cure_period_days',
+      'haircut_h0',
+      'haircut_alpha',
+      'liquidation_penalty_bps',
+    ],
+  },
+  {
+    title: 'Hedging',
+    fields: [
+      'hedge_policy',
+      'hedge_intensity',
+      'hedge_tenor_days',
+      'deribit_iv_source',
+      'manual_iv',
+    ],
+  },
+  {
+    title: 'Optimizer Objectives & Limits',
+    fields: [
+      'objective_preset',
+      'cvar_on',
+      'max_dilution',
+      'min_runway_months',
+      'max_breach_prob',
+      'min_profit_margin',
+      'min_profit_margin_constraint',
+      'wacc_cap',
+      'kappa_btc',
+      'lambda_dilution',
+      'lambda_runway',
+      'lambda_breach',
+      'lambda_wacc',
+      'lambda_profit_margin',
+    ],
+  },
+  {
+    title: 'Simulation & Jumps (Advanced)',
+    fields: [
+      'jump_intensity',
+      'jump_mean',
+      'jump_volatility',
+      'vol_mean_reversion_speed',
+      'long_run_volatility',
+      'use_variance_reduction',
+      'opex_stress_volatility',
+      'dilution_vol_estimate',
+    ],
+  },
+];
 
-// Default objective switches — guarantees non-optional booleans
-const defaultObjectiveSwitches: ObjectiveSwitches = {
-  max_btc: true,
-  min_dilution: true,
-  min_ltv_breach: true,
-  max_runway: true,
-  max_nav: true,
-  min_wacc: true,
-};
+export default function Assumptions({
+  assumptions,
+  setAssumptions,
+  mode,
+  setMode,
+}: {
+  assumptions: any;
+  setAssumptions: (a: any) => void;
+  mode: 'pro-forma' | 'live';
+  setMode: (m: 'pro-forma' | 'live') => void;
+}) {
+  const [openSections, setOpenSections] = useState<Set<string>>(
+    new Set([
+      'Company & Balance Sheet',
+      'Market & BTC Process',
+      'Capital Structure & Routes',
+    ])
+  );
 
-const Assumptions: React.FC<AssumptionsProps> = ({ onCalculationComplete }) => {
-  const [mode, setMode] = useState<'public' | 'private' | 'pro-forma'>('pro-forma');
-  const [assumptions, setAssumptions] = useState<Partial<AssumptionsData>>({
-    objective_switches: defaultObjectiveSwitches,
-    structure: 'Loan',
-    hedge_policy: 'none',
-    objective_preset: 'Balanced',
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingDefaults, setIsLoadingDefaults] = useState(true);
-  const [presets, setPresets] = useState<Record<string, any>>({});
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    'bitcoin-market': true,
-    'company-financials': true,
-    'funding-parameters': true,
-    'risk-collateral': true,
-    'hedging': true,
-    'constraints-objectives': true,
-  });
-  const [error, setError] = useState<string | null>(null);
-
-  const token = localStorage.getItem('authToken');
-
-  // Clear error when component mounts or mode changes
-  useEffect(() => {
-    setError(null);
-  }, [mode]);
-
-  // Fetch defaults
-  useEffect(() => {
-    const fetchDefaults = async () => {
-      if (!token) {
-        setIsLoadingDefaults(false);
-        return;
-      }
-      try {
-        const res = await authFetch('/api/default_params/', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setAssumptions(prev => ({
-            ...prev,
-            ...data,
-            objective_switches: {
-              ...defaultObjectiveSwitches,
-              ...(data.objective_switches ?? {}),
-            },
-          }));
-        } else {
-          const errorData = await res.json();
-          throw new Error(errorData.error || 'Failed to fetch defaults');
-        }
-      } catch (err) {
-        console.error('Error fetching defaults:', err);
-        setError('Failed to load default parameters');
-      } finally {
-        setIsLoadingDefaults(false);
-      }
-    };
-    fetchDefaults();
-  }, [token]);
-
-  // Fetch presets
-  useEffect(() => {
-    const fetchPresets = async () => {
-      if (!token) return;
-      try {
-        const res = await authFetch('/api/presets/', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setPresets(data);
-        } else {
-          const errorData = await res.json();
-          throw new Error(errorData.error || 'Failed to fetch presets');
-        }
-      } catch (err) {
-        console.error('Error fetching presets:', err);
-        setError('Failed to load risk presets');
-      }
-    };
-    fetchPresets();
-  }, [token]);
-
-  // Auto-fetch live BTC price once after defaults
-  useEffect(() => {
-    if (isLoadingDefaults || !token || Object.keys(assumptions).length === 0) return;
-
-    const fetchLivePrice = async () => {
-      try {
-        const res = await authFetch('/api/btc_price/', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const price = Math.round(data.BTC_current_market_price || 0);
-          if (price > 1000) {
-            setAssumptions(prev => ({
-              ...prev,
-              BTC_current_market_price: price,
-              targetBTCPrice: price,
-            }));
-          }
-        }
-      } catch (err) {
-        console.warn('Live BTC price fetch failed, using defaults');
-      }
-    };
-    fetchLivePrice();
-  }, [isLoadingDefaults, token]);
-
-  const loadDefaults = async () => {
-    if (!token) return;
-    try {
-      setIsLoadingDefaults(true);
-      setError(null);
-      const res = await authFetch('/api/default_params/', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAssumptions(prev => ({
-          ...prev,
-          ...data,
-          objective_switches: {
-            ...defaultObjectiveSwitches,
-            ...(data.objective_switches ?? {}),
-          },
-        }));
-      } else {
-        const errorData = await res.json();
-        throw new Error(errorData.error || 'Failed to load defaults');
-      }
-    } catch (err: any) {
-      console.error('Error loading defaults:', err);
-      setError(err.message || 'Failed to reload default parameters');
-    } finally {
-      setIsLoadingDefaults(false);
-    }
+  const toggleSection = (title: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
   };
-
-  const applyPreset = (presetName: string) => {
-    const p = presets[presetName];
-    if (!p) {
-      setError(`Preset "${presetName}" not found`);
-      return;
-    }
-    setAssumptions(prev => ({
-      ...prev,
-      LTV_Cap: p.LTV_Cap,
-      min_profit_margin: p.min_profit_margin,
-      mu: p.mu,
-      sigma: p.sigma,
-      objective_preset: presetName,
-    }));
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    const numValue = value === '' ? 0 : parseFloat(value);
-    setAssumptions(prev => ({
-      ...prev,
-      [name]: isNaN(numValue) ? value : numValue,
-    }));
-  };
-
-  const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setAssumptions(prev => ({ ...prev, [name]: checked }));
-  };
-
-  const toggleObjective = (key: keyof ObjectiveSwitches) => {
-    setAssumptions(prev => ({
-      ...prev,
-      objective_switches: {
-        ...(prev.objective_switches ?? defaultObjectiveSwitches),
-        [key]: !(prev.objective_switches?.[key] ?? defaultObjectiveSwitches[key]),
-      },
-    }));
-  };
-
-  const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
-  };
-
-  const runSimulation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) {
-      setError('Not authenticated');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const lockRes = await authFetch('/api/lock_snapshot/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ mode, assumptions }),
-      });
-      
-      if (!lockRes.ok) {
-        const errorData = await lockRes.json();
-        throw new Error(errorData.error || 'Failed to create snapshot');
-      }
-      
-      const lockData = await lockRes.json();
-      if (!lockData.snapshot_id) {
-        throw new Error(lockData.error || 'Snapshot creation failed');
-      }
-
-      const calcRes = await authFetch('/api/calculate/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          snapshot_id: lockData.snapshot_id,
-          format: 'json',
-          use_live: false,
-          seed: 42,
-          use_variance_reduction: assumptions.use_variance_reduction,
-          paths: assumptions.paths,
-        }),
-      });
-
-      if (!calcRes.ok) {
-        const errorData = await calcRes.json();
-        throw new Error(errorData.error || 'Calculation failed');
-      }
-
-      const result = await calcRes.json();
-      if (result.error) {
-        throw new Error(result.error);
-      }
-
-      onCalculationComplete(result);
-      
-    } catch (err: any) {
-      console.error('Simulation error:', err);
-      const errorMessage = err.message || 'An unexpected error occurred during simulation';
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (isLoadingDefaults) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading parameters...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!assumptions || Object.keys(assumptions).length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-600">Unable to load assumptions data.</p>
-          <button onClick={loadDefaults} className="mt-4 px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600">
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {/* Error Display */}
-      {error && (
-        <div className="max-w-7xl mx-auto mb-6">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Simulation Error</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-              <button
-                onClick={() => setError(null)}
-                className="mt-2 text-sm text-red-800 hover:text-red-900 font-medium"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Loading Overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-xl">
-            <div className="text-center">
-              {/* Enhanced Loading Animation */}
-              <div className="relative inline-block mb-6">
-                <div className="w-16 h-16 border-4 border-orange-200 border-t-orange-500 rounded-full animate-spin"></div>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="w-8 h-8 bg-orange-500 rounded-full animate-pulse"></div>
-                </div>
-              </div>
-              
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Running Simulation</h3>
-              <p className="text-gray-600 mb-4">This may take a few minutes...</p>
-              
-              {/* Progress Steps */}
-              <div className="space-y-3 text-sm text-gray-500">
-                <div className="flex items-center justify-between">
-                  <span>Creating snapshot...</span>
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Simulating BTC paths...</span>
-                  <div className="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Running optimization...</span>
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Calculating metrics...</span>
-                  <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-                </div>
-              </div>
-              
-              {/* Estimated Time */}
-              <div className="mt-6 p-3 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500">
-                  ⏱️ Estimated time: 90-180 seconds
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-10">
-          <h1 className="text-4xl font-bold text-gray-900">Treasury Risk Calculator</h1>
+    <div className="space-y-6">
+      {/* Mode toggle */}
+      <div className="flex gap-3">
+        {(['pro-forma', 'live'] as const).map((m) => (
           <button
-            onClick={loadDefaults}
-            disabled={isLoadingDefaults}
-            className="px-6 py-3 bg-gray-700 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-400"
+            key={m}
+            onClick={() => setMode(m)}
+            className={`px-4 py-2 rounded-lg font-medium transition ${
+              mode === m
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
           >
-            Reload Defaults
+            {m === 'pro-forma' ? 'Pro Forma' : 'Live'}
           </button>
-        </div>
-
-        <form onSubmit={runSimulation} className="space-y-10">
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-6 rounded-xl shadow border">
-              <label className="block text-lg font-semibold mb-3">Calculation Mode</label>
-              <select value={mode} onChange={e => setMode(e.target.value as any)} className="w-full px-4 py-3 border rounded-lg">
-                <option value="pro-forma">Pro-Forma</option>
-                <option value="public">Public Company</option>
-                <option value="private">Private Company</option>
-              </select>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow border">
-              <label className="block text-lg font-semibold mb-3">Primary Funding Structure</label>
-              <select name="structure" value={assumptions.structure || ''} onChange={handleChange} className="w-full px-4 py-3 border rounded-lg">
-                <option value="Loan">BTC-Backed Loan</option>
-                <option value="Convertible">Convertible Note</option>
-                <option value="PIPE">PIPE</option>
-                <option value="ATM">ATM Equity Line</option>
-              </select>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow border">
-              <label className="block text-lg font-semibold mb-3">Risk Preset</label>
-              <div className="flex gap-3 flex-wrap">
-                {['Defensive', 'Balanced', 'Growth'].map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => applyPreset(p)}
-                    className={`px-6 py-3 rounded-lg font-medium transition ${
-                      assumptions.objective_preset === p ? 'bg-orange-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-8">
-            <CollapsibleSection title="Bitcoin & Market" sectionId="bitcoin-market" isExpanded={expandedSections['bitcoin-market']} onToggle={toggleSection}>
-              <Input label="Current BTC Price ($)" name="BTC_current_market_price" value={assumptions.BTC_current_market_price || 0} onChange={handleChange} tooltip="Current market price of Bitcoin in USD." />
-              <Input label="Target BTC Price ($)" name="targetBTCPrice" value={assumptions.targetBTCPrice || 0} onChange={handleChange} tooltip="Expected target price of Bitcoin at the end of the time horizon." />
-              <Input label="BTC Treasury" name="BTC_treasury" value={assumptions.BTC_treasury || 0} onChange={handleChange} tooltip="The amount of Bitcoin currently held in the company's treasury." />
-              <Input label="Issue Price ($)" name="IssuePrice" value={assumptions.IssuePrice || 0} onChange={handleChange} tooltip="The price at which new securities are issued." />
-              <Input label="Drift (μ)" name="mu" value={assumptions.mu || 0} step="0.01" onChange={handleChange} tooltip="Expected annual return (drift) of Bitcoin." />
-              <Input label="Volatility (σ)" name="sigma" value={assumptions.sigma || 0} step="0.01" onChange={handleChange} tooltip="Annualized volatility of Bitcoin returns." />
-              <Input label="Time Horizon (y)" name="t" value={assumptions.t || 0} step="0.1" onChange={handleChange} tooltip="Time horizon for the simulation in years." />
-              <Input label="Dividend Yield δ" name="delta" value={assumptions.delta || 0} step="0.01" onChange={handleChange} tooltip="Dividend yield for Bitcoin (usually 0)." />
-              <Input label="Manual IV" name="manual_iv" value={assumptions.manual_iv || 0} step="0.01" onChange={handleChange} tooltip="Manual implied volatility override." />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Company Financials" sectionId="company-financials" isExpanded={expandedSections['company-financials']} onToggle={toggleSection}>
-              <Input label="Initial Equity Value ($)" name="initial_equity_value" value={assumptions.initial_equity_value || 0} onChange={handleChange} />
-              <Input label="Initial Cash ($)" name="initial_cash" value={assumptions.initial_cash || 0} onChange={handleChange} />
-              <Input label="Shares Basic" name="shares_basic" value={assumptions.shares_basic || 0} onChange={handleChange} />
-              <Input label="Shares FD" name="shares_fd" value={assumptions.shares_fd || 0} onChange={handleChange} />
-              <Input label="Monthly OpEx ($)" name="opex_monthly" value={assumptions.opex_monthly || 0} onChange={handleChange} />
-              <Input label="Tax Rate (%)" name="tax_rate" value={(assumptions.tax_rate ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, tax_rate: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="NOLs ($)" name="nols" value={assumptions.nols || 0} onChange={handleChange} />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Funding Parameters" sectionId="funding-parameters" isExpanded={expandedSections['funding-parameters']} onToggle={toggleSection}>
-              <Input label="Loan Principal ($)" name="LoanPrincipal" value={assumptions.LoanPrincipal || 0} onChange={handleChange} />
-              <Input label="New Equity Raised ($)" name="new_equity_raised" value={assumptions.new_equity_raised || 0} onChange={handleChange} />
-              <Input label="Cost of Debt (%)" name="cost_of_debt" value={(assumptions.cost_of_debt ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, cost_of_debt: parseFloat(e.target.value) / 100 }))} step="0.1" />
-              <Input label="LTV Cap (%)" name="LTV_Cap" value={(assumptions.LTV_Cap ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, LTV_Cap: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="PIPE Discount (%)" name="pipe_discount" value={(assumptions.pipe_discount ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, pipe_discount: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="ADV 30d ($)" name="adv_30d" value={assumptions.adv_30d || 0} onChange={handleChange} />
-              <Input label="ATM % of ADV" name="atm_pct_adv" value={(assumptions.atm_pct_adv ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, atm_pct_adv: parseFloat(e.target.value) / 100 }))} step="1" />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Risk & Collateral" sectionId="risk-collateral" isExpanded={expandedSections['risk-collateral']} onToggle={toggleSection}>
-              <Input label="Haircut H0 (%)" name="haircut_h0" value={(assumptions.haircut_h0 ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, haircut_h0: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="Haircut Alpha" name="haircut_alpha" value={assumptions.haircut_alpha || 0} step="0.01" onChange={handleChange} />
-              <Input label="Liquidation Penalty (bps)" name="liquidation_penalty_bps" value={assumptions.liquidation_penalty_bps || 0} onChange={handleChange} />
-              <Input label="Cure Period (days)" name="cure_period_days" value={assumptions.cure_period_days || 0} onChange={handleChange} />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Hedging" sectionId="hedging" isExpanded={expandedSections['hedging']} onToggle={toggleSection}>
-              <div className="mb-4">
-                <label className="block font-medium mb-2">Hedge Policy</label>
-                <select name="hedge_policy" value={assumptions.hedge_policy || ''} onChange={handleChange} className="w-full px-4 py-2 border rounded-lg">
-                  <option value="none">None</option>
-                  <option value="protective_put">Protective Put</option>
-                </select>
-              </div>
-              <Input label="Hedge Intensity (%)" name="hedge_intensity" value={(assumptions.hedge_intensity ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, hedge_intensity: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="Hedge Tenor (days)" name="hedge_tenor_days" value={assumptions.hedge_tenor_days || 0} onChange={handleChange} />
-            </CollapsibleSection>
-
-            <CollapsibleSection title="Constraints & Objectives" sectionId="constraints-objectives" isExpanded={expandedSections['constraints-objectives']} onToggle={toggleSection}>
-              <Input label="Max Dilution (%)" name="max_dilution" value={(assumptions.max_dilution ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_dilution: parseFloat(e.target.value) / 100 }))} step="1" />
-              <Input label="Min Runway (months)" name="min_runway_months" value={assumptions.min_runway_months || 0} onChange={handleChange} />
-              <Input label="Max LTV Breach Prob (%)" name="max_breach_prob" value={(assumptions.max_breach_prob ?? 0) * 100} onChange={e => setAssumptions(p => ({ ...p, max_breach_prob: parseFloat(e.target.value) / 100 }))} step="1" />
-
-              <div className="pt-4">
-                <h3 className="font-medium mb-3">Optimization Objectives</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {Object.keys(assumptions.objective_switches || defaultObjectiveSwitches).map(key => (
-                    <label key={key} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        checked={assumptions.objective_switches?.[key as keyof ObjectiveSwitches] ?? true}
-                        onChange={() => toggleObjective(key as keyof ObjectiveSwitches)}
-                        className="w-5 h-5 text-orange-500 rounded"
-                      />
-                      <span className="capitalize">{key.replace(/_/g, ' ')}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </CollapsibleSection>
-          </div>
-
-          <div className="flex justify-center mt-12">
-            <button
-              type="submit"
-              disabled={isLoading}
-              className={`px-16 py-6 text-2xl font-bold text-white rounded-xl shadow-lg transition-all duration-300 ${
-                isLoading 
-                  ? 'bg-orange-400 cursor-not-allowed transform scale-95' 
-                  : 'bg-orange-500 hover:bg-orange-600 hover:scale-105'
-              }`}
-            >
-              {isLoading ? (
-                <span className="flex items-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Running...
-                </span>
-              ) : (
-                'Run Optimization'
-              )}
-            </button>
-          </div>
-        </form>
+        ))}
       </div>
+
+      {/* Sections */}
+      {groups.map((group) => (
+        <Card key={group.title} className="overflow-hidden">
+          <button
+            onClick={() => toggleSection(group.title)}
+            className="w-full text-left px-6 py-4 bg-gray-50 hover:bg-gray-100 transition flex justify-between items-center"
+          >
+            <SectionTitle className="m-0">
+              {group.title}
+            </SectionTitle>
+            <span className="text-2xl font-light">
+              {openSections.has(group.title) ? '−' : '+'}
+            </span>
+          </button>
+
+          {openSections.has(group.title) && (
+            <div className="p-6 border-t border-gray-100">
+              <AssumptionGrid
+                key={group.title} 
+                assumptions={assumptions}
+                setAssumptions={setAssumptions}
+                groupFields={group.fields}
+              />
+            </div>
+          )}
+        </Card>
+      ))}
     </div>
   );
-};
-
-// Reusable Components
-const CollapsibleSection: React.FC<{
-  title: string;
-  sectionId: string;
-  isExpanded: boolean;
-  onToggle: (id: string) => void;
-  children: React.ReactNode;
-}> = ({ title, sectionId, isExpanded, onToggle, children }) => (
-  <div className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${isExpanded ? 'max-h-[2000px]' : 'max-h-16'} overflow-hidden`}>
-    <button
-      type="button"
-      onClick={() => onToggle(sectionId)}
-      className="w-full px-6 py-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors"
-    >
-      <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-      <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-      </svg>
-    </button>
-    <div className={`px-6 pb-6 space-y-4 ${isExpanded ? 'block' : 'hidden'}`}>
-      {children}
-    </div>
-  </div>
-);
-
-const Input: React.FC<{
-  label: string;
-  name: string;
-  value: number | string;
-  step?: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  tooltip?: string;
-}> = ({ label, name, value, step = 'any', onChange, tooltip }) => (
-  <div>
-    <label className="block text-sm font-medium text-gray-700 flex items-center gap-2">
-      {label}
-      {tooltip && (
-        <span className="text-xs w-4 h-4 rounded-full border border-gray-400 flex items-center justify-center cursor-help" title={tooltip}>
-          ?
-        </span>
-      )}
-    </label>
-    <input
-      type="number"
-      name={name}
-      value={value}
-      step={step}
-      onChange={onChange}
-      className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-orange-500 focus:border-orange-500"
-    />
-  </div>
-);
-
-export default Assumptions;
+}

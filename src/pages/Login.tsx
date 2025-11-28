@@ -3,7 +3,7 @@ import { authFetch } from '../auth';
 import { Page } from '../App';
 
 interface Props {
-  onSuccess: () => void;
+  onSuccess: (token: string) => void;  // Now accepts token
   setPage: (page: Page) => void;
 }
 
@@ -13,7 +13,6 @@ export default function Login({ onSuccess, setPage }: Props) {
   const [error, setError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-focus input on mount
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
@@ -42,8 +41,10 @@ export default function Login({ onSuccess, setPage }: Props) {
       }
 
       const data = await response.json();
-      localStorage.setItem('authToken', data.token); // Match your App.tsx key
-      onSuccess(); // This triggers authenticated flow in App.tsx
+      const token = data.token;
+
+      localStorage.setItem('authToken', token);
+      onSuccess(token); // Pass token to App.tsx
     } catch (err: any) {
       setError(err.message || 'Login failed. Please try again.');
       setPassword('');
@@ -56,7 +57,6 @@ export default function Login({ onSuccess, setPage }: Props) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg">
@@ -69,7 +69,6 @@ export default function Login({ onSuccess, setPage }: Props) {
           <p className="mt-4 text-lg text-gray-600">Enter access password to continue</p>
         </div>
 
-        {/* Login Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -91,14 +90,12 @@ export default function Login({ onSuccess, setPage }: Props) {
               />
             </div>
 
-            {/* Error Message */}
             {error && (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-medium">
                 {error}
               </div>
             )}
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading || !password.trim()}
@@ -113,13 +110,12 @@ export default function Login({ onSuccess, setPage }: Props) {
           </p>
         </div>
 
-        {/* Back to Landing */}
         <div className="text-center mt-8">
           <button
             onClick={() => setPage('landing')}
             className="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-2 mx-auto transition-colors"
           >
-            ← Back to home
+            Back to home
           </button>
         </div>
       </div>
