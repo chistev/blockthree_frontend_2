@@ -1,33 +1,40 @@
 import React, { useState } from 'react';
 import Assumptions from './Assumptions';
 import AsIsView from './AsIsView';
-import OptimizedView from './OptimizedView';
+import OptimizedView from './OptimizedView';  // ← Now matches the simplified version we use
 import ComparisonView from './ComparisonView';
-import { Deal } from '../App';
+import { Card, SectionTitle, Button, Pill } from '../components/Primitives';
 import { authFetch } from '../auth';
-import { toast } from 'react-toastify';
 
-interface Props {
+interface Deal {
+  id: string;
+  name: string;
+  mode: 'public' | 'private' | 'pro-forma';
+  assumptions: any;
+  asIsResults?: any;
+  optimizedResults?: any[];  // Array because backend returns 5 candidates
+  createdAt: string;
+  updatedAt: string;
+  status: 'draft' | 'as_is_run' | 'optimized_run' | 'compared';
+  snapshotId?: string;
+}
+
+interface DealDetailProps {
   dealId: string;
   deals: Deal[];
   setDeals: React.Dispatch<React.SetStateAction<Deal[]>>;
-  setPage: (dealId: string) => void;
+  setPage: (page: string) => void;
   token: string | null;
 }
 
-export default function DealDetail({ dealId, deals, setDeals, token }: Props) {
+export default function DealDetail({ dealId, deals, setDeals, setPage, token }: DealDetailProps) {
   const deal = deals.find((d) => d.id === dealId);
-  if (!deal) {
-    return (
-      <div className="max-w-7xl mx-auto p-12 text-center text-gray-500 text-lg">
-        Scenario not found.
-      </div>
-    );
-  }
+  if (!deal) return <div className="text-center py-12 text-gray-500">Deal not found</div>;
 
-  const [tab, setTab] = useState<'as-is' | 'optimized' | 'comparison'>('optimized');
+  const [tab, setTab] = useState<'as-is' | 'optimized' | 'comparison'>('as-is');
   const [name, setName] = useState(deal.name);
-  const [isRunning, setIsRunning] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const updateDeal = (updates: Partial<Deal>) => {
     setDeals((prev) =>
@@ -37,178 +44,166 @@ export default function DealDetail({ dealId, deals, setDeals, token }: Props) {
     );
   };
 
-  const runAsIs = async () => {
-    setIsRunning(true);
+  const runCalculation = async (type: 'as-is' | 'optimized' | 'both') => {
+    setIsLoading(true);
+    setError(null);
+
     try {
+      // 1. Lock snapshot
       const lockRes = await authFetch('/api/lock_snapshot/', {
         method: 'POST',
-        body: JSON.stringify({ assumptions: deal.assumptions, mode: deal.mode }),
+        body: JSON.stringify({
+          assumptions: deal.assumptions,
+          mode: deal.mode,
+        }),
       });
+
+      if (!lockRes.ok) {
+        const err = await lockRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to lock snapshot');
+      }
+
       const { snapshot_id } = await lockRes.json();
 
+      // 2. Run calculation
       const calcRes = await authFetch('/api/calculate/', {
         method: 'POST',
-        body: JSON.stringify({ snapshot_id, format: 'json', use_live: false }),
+        body: JSON.stringify({
+          snapshot_id,
+          format: 'json',
+          use_live: false,
+          seed: 42,
+        }),
       });
-      const data = await calcRes.json();
 
-      updateDeal({
-        asIsResults: data,
-        status: deal.optimizedResults ? 'compared' : 'as_is_run',
-      });
-      toast.success('As-Is scenario complete');
-    } catch {
-      toast.error('As-Is simulation failed');
+      if (!calcRes.ok) {
+        const err = await calcRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Calculation failed');
+      }
+
+      const results: any[] = await calcRes.json(); // ← Always 5 candidates from backend
+
+      // Identify As-Is (match by current structure or fallback)
+      const currentStructure = (deal.assumptions.structure || '').toString().toLowerCase();
+      const asIsResult = results.find((c) =>
+        (c.type || '').toLowerCase().includes(currentStructure) ||
+        (c.params?.structure || '').toLowerCase() === currentStructure
+      ) || results[0];
+
+      // Update state
+      if (type === 'as-is' || type === 'both') {
+        updateDeal({ asIsResults: asIsResult, snapshotId: snapshot_id });
+      }
+      if (type === 'optimized' || type === 'both') {
+        updateDeal({ optimizedResults: results, snapshotId: snapshot_id });
+      }
+      updateDeal({ status: type === 'both' ? 'compared' : type === 'as-is' ? 'as_is_run' : 'optimized_run' });
+
+      // Auto switch tab
+      setTab(type === 'as-is' ? 'as-is' : type === 'optimized' ? 'optimized' : 'comparison');
+
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
     } finally {
-      setIsRunning(false);
+      setIsLoading(false);
     }
-  };
-
-  const runOptimized = async () => {
-    setIsRunning(true);
-    try {
-      const optAssumptions = { ...deal.assumptions, structure: '' };
-      const lockRes = await authFetch('/api/lock_snapshot/', {
-        method: 'POST',
-        body: JSON.stringify({ assumptions: optAssumptions, mode: deal.mode }),
-      });
-      const { snapshot_id } = await lockRes.json();
-
-      const calcRes = await authFetch('/api/calculate/', {
-        method: 'POST',
-        body: JSON.stringify({ snapshot_id, format: 'json', use_live: false }),
-      });
-      const data = await calcRes.json();
-
-      updateDeal({
-        optimizedResults: data,
-        status: deal.asIsResults ? 'compared' : 'optimized_run',
-      });
-      toast.success('Optimization complete');
-      setTab('optimized');
-    } catch {
-      toast.error('Optimization failed');
-    } finally {
-      setIsRunning(false);
-    }
-  };
-
-  const runBoth = async () => {
-    await runAsIs();
-    if (!deal.optimizedResults) await runOptimized();
-    setTab('comparison');
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start gap-6">
-        <div>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => updateDeal({ name })}
-            className="text-4xl font-bold bg-transparent border-b-4 border-transparent hover:border-gray-300 focus:border-blue-600 outline-none transition-all"
-          />
-          <div className="flex gap-4 mt-5">
-            <span className="px-4 py-2 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-              {deal.mode === 'pro-forma' ? 'Pro Forma' : 'Live'}
-            </span>
-            <span
-              className={`px-4 py-2 rounded-full text-sm font-medium ${
-                deal.status === 'compared'
-                  ? 'bg-green-100 text-green-700'
-                  : deal.status.includes('run')
-                  ? 'bg-amber-100 text-amber-700'
-                  : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {deal.status.replace(/_/g, ' ')}
-            </span>
-          </div>
-        </div>
+    <div className="space-y-8">
+      <SectionTitle>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onBlur={() => updateDeal({ name })}
+          className="bg-transparent border-b-2 border-transparent focus:border-blue-500 outline-none text-2xl font-semibold w-auto min-w-[300px]"
+        />
+        <Pill tone="blue" className="ml-4">{deal.mode}</Pill>
+        <Pill tone={deal.status === 'draft' ? 'gray' : 'green'} className="ml-2">
+          {deal.status.replace('_', ' ')}
+        </Pill>
+      </SectionTitle>
 
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={runAsIs}
-            disabled={isRunning}
-            className="px-5 py-3 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 disabled:opacity-60"
-          >
-            {isRunning ? 'Running...' : 'Run As-Is'}
-          </button>
-          <button
-            onClick={runOptimized}
-            disabled={isRunning}
-            className="px-5 py-3 bg-gray-900 text-white rounded-lg font-medium hover:bg-gray-800 disabled:opacity-60"
-          >
-            Run Optimized
-          </button>
-          <button
-            onClick={runBoth}
-            disabled={isRunning}
-            className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-60 shadow-md"
-          >
-            Run Both & Compare
-          </button>
-        </div>
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => runCalculation('as-is')} disabled={isLoading}>
+          Run As-Is
+        </Button>
+        <Button onClick={() => runCalculation('optimized')} disabled={isLoading}>
+          Run Optimized (5 Candidates)
+        </Button>
+        <Button onClick={() => runCalculation('both')} disabled={isLoading}>
+          Run Both & Compare
+        </Button>
       </div>
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Assumptions */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold mb-5 text-gray-800">Assumptions</h2>
-            <Assumptions
-              assumptions={deal.assumptions}
-              setAssumptions={(a) => updateDeal({ assumptions: a })}
-              mode={deal.mode}
-              setMode={(m) => updateDeal({ mode: m })}
-            />
-          </div>
+      {isLoading && (
+        <div className="text-center py-12">
+          <svg className="animate-spin h-10 w-10 text-blue-600 mx-auto mb-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p>Running models...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Assumptions – always visible */}
+        <div>
+          <Assumptions
+            assumptions={deal.assumptions}
+            setAssumptions={(newAssumptions: any) => updateDeal({ assumptions: newAssumptions })}
+            mode={deal.mode}
+            setMode={(newMode: string) => updateDeal({ mode: newMode as Deal['mode'] })}
+            handleCalculate={() => runCalculation('optimized')}
+            snapshotId={deal.snapshotId}
+            isLoading={isLoading}
+            progress={0} // not used in current Assumptions, safe
+            error={error}
+          />
         </div>
 
-        {/* Results Tabs */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="border-b border-gray-200">
-            <div className="flex gap-10">
-              {(['as-is', 'optimized', 'comparison'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`pb-4 px-2 border-b-3 font-medium capitalize transition-all ${
-                    tab === t
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {t === 'as-is' ? 'As-Is' : t === 'optimized' ? 'Optimized' : 'Comparison'}
-                </button>
-              ))}
-            </div>
+        {/* Results Panel */}
+        <Card className="p-6">
+          <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-zinc-700 pb-3">
+            <Button
+              variant={tab === 'as-is' ? 'primary' : 'ghost'}
+              onClick={() => setTab('as-is')}
+              disabled={!deal.asIsResults}
+            >
+              As-Is
+            </Button>
+            <Button
+              variant={tab === 'optimized' ? 'primary' : 'ghost'}
+              onClick={() => setTab('optimized')}
+              disabled={!deal.optimizedResults}
+            >
+              Optimized
+            </Button>
+            <Button
+              variant={tab === 'comparison' ? 'primary' : 'ghost'}
+              onClick={() => setTab('comparison')}
+              disabled={!deal.asIsResults || !deal.optimizedResults}
+            >
+              Comparison
+            </Button>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 min-h-96">
-            {tab === 'as-is' && deal.asIsResults && <AsIsView results={deal.asIsResults} />}
-            {tab === 'optimized' && deal.optimizedResults && <OptimizedView results={deal.optimizedResults} />}
-            {tab === 'comparison' && deal.asIsResults && deal.optimizedResults && (
-              <ComparisonView asIs={deal.asIsResults} optimized={deal.optimizedResults} />
-            )}
-
-            {/* Empty State */}
-            {((tab === 'as-is' && !deal.asIsResults) ||
-              (tab === 'optimized' && !deal.optimizedResults) ||
-              (tab === 'comparison' && (!deal.asIsResults || !deal.optimizedResults))) && (
-              <div className="text-center py-16">
-                <div className="w-20 h-20 mx-auto mb-6 bg-gray-200 border-2 border-dashed rounded-xl" />
-                <p className="text-lg text-gray-600">No results yet</p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Run the simulation to see detailed outputs
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
+          {tab === 'as-is' && deal.asIsResults && <AsIsView results={deal.asIsResults} />}
+          {tab === 'optimized' && deal.optimizedResults && <OptimizedView results={deal.optimizedResults} />}
+          {tab === 'comparison' && deal.asIsResults && deal.optimizedResults && (
+            <ComparisonView asIs={deal.asIsResults} optimized={deal.optimizedResults} />
+          )}
+          {!deal.asIsResults && !deal.optimizedResults && tab !== 'as-is' && (
+            <p className="text-center text-gray-500 py-12">Run a scenario to see results</p>
+          )}
+        </Card>
       </div>
     </div>
   );

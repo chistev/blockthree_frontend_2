@@ -1,98 +1,177 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createMachine, assign } from 'xstate';
+import { useMachine } from '@xstate/react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import DealsPage from './pages/DealsPage';
 import DealDetail from './pages/DealDetail';
 
-export type Page = 'landing' | 'login' | 'deals' | 'deal';
+import { Button } from './components/Primitives';
 
-export interface Deal {
+interface MachineContext {
+  progress: number;
+}
+
+type MachineEvent =
+  | { type: 'RUN' }
+  | { type: 'LOCKED' }
+  | { type: 'SUCCESS' }
+  | { type: 'ERROR' }
+  | { type: 'RETRY' };
+
+const runModelMachine = createMachine({
+  id: 'runModel',
+  initial: 'idle',
+  context: { progress: 0 } as MachineContext,
+  types: {} as {
+    context: MachineContext;
+    events: MachineEvent;
+  },
+  states: {
+    idle: {
+      on: { RUN: 'locking' },
+    },
+    locking: {
+      on: {
+        LOCKED: 'running',
+        ERROR: 'error',
+      },
+      after: {
+        500: {
+          actions: assign({
+            progress: () => 30,
+          }),
+        },
+      },
+    },
+    running: {
+      on: {
+        SUCCESS: 'success',
+        ERROR: 'error',
+      },
+      after: {
+        200: {
+          actions: assign({
+            progress: () => 70,
+          }),
+        },
+      },
+    },
+    success: { type: 'final' },
+    error: {
+      on: { RETRY: 'locking' },
+    },
+  },
+});
+
+type Deal = {
   id: string;
   name: string;
-  mode: 'pro-forma' | 'live';
+  mode: 'public' | 'private' | 'pro-forma';
   assumptions: any;
   asIsResults?: any;
   optimizedResults?: any;
-  status: 'draft' | 'as_is_run' | 'optimized_run' | 'compared';
   createdAt: string;
   updatedAt: string;
-}
+  status: 'draft' | 'as_is_run' | 'optimized_run' | 'compared';
+};
 
 export default function App() {
-  const [page, setPage] = useState<Page>('landing');
-  const [currentDealId, setCurrentDealId] = useState<string | null>(null);
+  const [page, setPage] = useState<string>('landing');
+  const [token, setToken] = useState<string | null>(null);
+  const [dark, setDark] = useState<boolean>(false);
   const [deals, setDeals] = useState<Deal[]>([]);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
 
-  const isAuthenticated = !!token;
-
-  // Auto-skip to deals if logged in
+  // Load token from localStorage on mount
   useEffect(() => {
-    if (isAuthenticated) {
-      setPage(deals.length > 0 ? 'deals' : 'deals');
-    } else {
-      setPage('landing');
+    const stored = localStorage.getItem('authToken');
+    if (stored) {
+      setToken(stored);
     }
-  }, [isAuthenticated, deals.length]);
+  }, []);
 
-  const handleLoginSuccess = (newToken: string) => {
-    localStorage.setItem('authToken', newToken);
-    setToken(newToken);
-  };
+  // Auto-redirect logic – force login when needed
+  useEffect(() => {
+    if (token && (page === 'landing' || page === 'login')) {
+      setPage('deals');
+    } else if (!token && page !== 'landing' && page !== 'login') {
+      setPage('login');
+    }
+  }, [token, page]);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
     setToken(null);
+    localStorage.removeItem('authToken');
     setDeals([]);
     setPage('landing');
+    toast.success('Logged out successfully');
   };
 
-  const navigateToDeal = (dealId: string) => {
-    setCurrentDealId(dealId);
-    setPage('deal');
-  };
+  const currentPage = page.startsWith('deal/') ? 'dealDetail' : page;
+  const dealId = page.startsWith('deal/') ? page.split('/')[1] : null;
+
+  // Apply dark mode class to document root
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [dark]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="font-sans text-gray-900">
-        {/* Authenticated Header Bar */}
-        {isAuthenticated && page !== 'landing' && page !== 'login' && (
-          <header className="bg-white shadow-sm border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-900">Block Three</h1>
-              <button
-                onClick={handleLogout}
-                className="px-5 py-2 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition"
-              >
-                Logout
-              </button>
-            </div>
-          </header>
-        )}
+    <div className="min-h-screen p-6 bg-slate-100 dark:bg-slate-900 font-ibm-plex-sans text-gray-900 dark:text-gray-100">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme={dark ? 'dark' : 'light'}
+      />
 
-        <main className="min-h-screen">
-          {page === 'landing' && <Landing setPage={setPage} />}
-          {page === 'login' && <Login onSuccess={handleLoginSuccess} setPage={setPage} />}
-          {page === 'deals' && isAuthenticated && (
-            <DealsPage deals={deals} setDeals={setDeals} setPage={navigateToDeal} token={token} />
+      <header className="mb-6 flex justify-between items-center">
+        <h1 className="font-inter-tight text-[28px] font-semibold tracking-tight text-gray-900 dark:text-white">
+          Block Three Capital
+        </h1>
+        <div className="flex items-center gap-4">
+          <Button onClick={() => setDark(!dark)} variant="ghost" className="text-gray-700 dark:text-gray-300">
+            {dark ? 'Light Mode' : 'Dark Mode'}
+          </Button>
+          {token && (
+            <Button onClick={handleLogout} variant="danger">
+              Logout
+            </Button>
           )}
-          {page === 'deal' && isAuthenticated && currentDealId && (
-            <DealDetail
-              dealId={currentDealId}
-              deals={deals}
-              setDeals={setDeals}
-              setPage={navigateToDeal}
-              token={token}
-            />
-          )}
-        </main>
+        </div>
+      </header>
 
-        {!isAuthenticated && (
-          <footer className="py-8 text-center text-sm text-gray-500 border-t border-gray-200 mt-auto">
-            <p>© 2025 Block Three. Treasury simulation software.</p>
-          </footer>
-        )}
-      </div>
+      {currentPage === 'landing' && <Landing setPage={setPage} />}
+      {currentPage === 'login' && <Login onSuccess={setToken} setPage={setPage} />}
+      {currentPage === 'deals' && token && (
+        <DealsPage
+          deals={deals}
+          setDeals={setDeals}
+          setPage={setPage}
+          token={token}
+        />
+      )}
+      {currentPage === 'dealDetail' && token && dealId && (
+        <DealDetail
+          dealId={dealId}
+          deals={deals}
+          setDeals={setDeals}
+          setPage={setPage}
+          token={token}
+        />
+      )}
     </div>
   );
 }
