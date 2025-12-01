@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, Pill, SectionTitle, Stat } from '../components/Primitives';
 import OptimizedView from './OptimizedView';
-import { formatMoney, pct, months } from '../utils';
+import { formatMoney, pct, months, num } from '../utils';
 
 interface ComparisonViewProps {
   asIs: any;
@@ -23,7 +23,10 @@ export default function ComparisonView({ asIs, optimized }: ComparisonViewProps)
             <Stat label="Expected NAV" value={formatMoney(asIsMetrics.nav?.avg_nav ?? 0)} />
             <Stat label="LTV Breach Prob" value={pct(asIsMetrics.ltv?.exceed_prob ?? 0)} />
             <Stat label="Dilution" value={pct(asIsMetrics.dilution?.avg_dilution ?? 0)} />
-            <Stat label="ROE" value={pct(asIsMetrics.roe?.avg_roe ?? 0)} />
+            <Stat
+              label="ROE Uplift"
+              value={`${num(asIsMetrics.term_sheet?.roe_uplift ?? 0, 2)}%`}
+            />
             <Stat label="Runway" value={months(asIsMetrics.runway?.dist_mean ?? 0)} />
             <Stat label="WACC" value={pct(asIsMetrics.wacc ?? 0)} />
           </div>
@@ -39,7 +42,11 @@ export default function ComparisonView({ asIs, optimized }: ComparisonViewProps)
             <Stat label="Expected NAV" value={formatMoney(optMetrics.nav?.avg_nav ?? 0)} />
             <Stat label="LTV Breach Prob" value={pct(optMetrics.ltv?.exceed_prob ?? 0)} />
             <Stat label="Dilution" value={pct(optMetrics.dilution?.avg_dilution ?? 0)} />
-            <Stat label="ROE" value={pct(optMetrics.roe?.avg_roe ?? 0)} />
+            <Stat
+              label="ROE Uplift"
+              value={`${num(optMetrics.term_sheet?.roe_uplift ?? 0, 2)}%`}
+              tone="good"
+            />
             <Stat label="Runway" value={months(optMetrics.runway?.dist_mean ?? 0)} />
             <Stat label="WACC" value={pct(optMetrics.wacc ?? 0)} />
           </div>
