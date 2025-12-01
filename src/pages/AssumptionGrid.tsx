@@ -54,7 +54,7 @@ const tooltips: Record<string, string> = {
   jump_mean: 'Average size of jumps (log-return).',
   jump_volatility: 'Volatility of jump size.',
   opex_stress_volatility: 'Volatility applied to opex in stress scenarios.',
-  bootstrap_samples: 'Number of bootstrap samples for confidence intervals.',
+  // bootstrap_samples removed
   wacc_cap: 'Upper bound on acceptable WACC in optimization.',
   min_profit_margin_constraint: 'Hard minimum profit margin for lenders.',
   kappa_btc: 'Weighting factor for BTC retention in hybrid scoring.',
@@ -108,15 +108,11 @@ export default function AssumptionGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {groupFields.map((key) => {
-        // Skip removed fields
-        if (key === 'deribit_iv_source' || key === 'objective_preset') {
-          return null;
-        }
+        if (key === 'deribit_iv_source' || key === 'objective_preset') return null;
 
         const value = getValue(key);
         const isBoolean = typeof value === 'boolean';
 
-        // Special dropdown for hedge_policy
         if (key === 'hedge_policy') {
           return (
             <div
@@ -146,7 +142,6 @@ export default function AssumptionGrid({
           );
         }
 
-        // Default rendering for all other fields
         return (
           <div
             key={key}

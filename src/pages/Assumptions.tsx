@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Card, SectionTitle, Pill, Button } from '../components/Primitives';
 import AssumptionGrid from './AssumptionGrid';
 
@@ -11,8 +12,6 @@ interface AssumptionsProps {
   isLoading: boolean;
   progress: number;
   error?: string | null;
-  advancedOpen?: boolean;
-  setAdvancedOpen?: (open: boolean) => void;
 }
 
 export default function Assumptions({
@@ -25,9 +24,9 @@ export default function Assumptions({
   isLoading,
   progress,
   error,
-  advancedOpen = false,
-  setAdvancedOpen = () => {},
 }: AssumptionsProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   const groups = [
     {
       title: 'BTC Parameters',
@@ -55,12 +54,7 @@ export default function Assumptions({
     },
     {
       title: 'Hedging',
-      fields: [
-        'hedge_policy',
-        'hedge_intensity',
-        'hedge_tenor_days',
-        'manual_iv',
-      ],
+      fields: ['hedge_policy', 'hedge_intensity', 'hedge_tenor_days', 'manual_iv'],
     },
     {
       title: 'Optimizer Objectives & Constraints',
@@ -79,6 +73,7 @@ export default function Assumptions({
     },
   ];
 
+  // REMOVED: bootstrap_samples
   const advancedGroup = {
     title: 'Advanced Parameters',
     fields: [
@@ -91,7 +86,7 @@ export default function Assumptions({
       'jump_mean',
       'jump_volatility',
       'opex_stress_volatility',
-      'bootstrap_samples',
+      // 'bootstrap_samples', ← GONE
       'wacc_cap',
       'min_profit_margin_constraint',
       'kappa_btc',
@@ -124,6 +119,7 @@ export default function Assumptions({
         </div>
       </div>
 
+      {/* Main Groups */}
       {groups.map((group) => (
         <Card key={group.title} className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-5">
@@ -137,6 +133,7 @@ export default function Assumptions({
         </Card>
       ))}
 
+      {/* Advanced Parameters - Collapsible */}
       <Card className="p-6">
         <div
           className="flex justify-between items-center cursor-pointer select-none"
@@ -146,7 +143,9 @@ export default function Assumptions({
             Advanced Parameters
           </h3>
           <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
+              advancedOpen ? 'rotate-180' : ''
+            }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -154,15 +153,18 @@ export default function Assumptions({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-        {advancedOpen && (
-          <div className="mt-6">
-            <AssumptionGrid
-              assumptions={assumptions}
-              setAssumptions={setAssumptions}
-              groupFields={advancedGroup.fields}
-            />
-          </div>
-        )}
+
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${
+            advancedOpen ? 'max-h-screen opacity-100 mt-6' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <AssumptionGrid
+            assumptions={assumptions}
+            setAssumptions={setAssumptions}
+            groupFields={advancedGroup.fields}
+          />
+        </div>
       </Card>
 
       <Button
@@ -175,7 +177,11 @@ export default function Assumptions({
           <>
             <svg className="animate-spin h-6 w-6 text-white" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
             Running Models ({progress}%)
           </>
