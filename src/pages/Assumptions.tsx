@@ -192,7 +192,7 @@ export default function Assumptions({
 
       {snapshotId && (
         <div className="flex justify-center">
-          <Pill tone="green">Snapshot: {snapshotId.slice(0, 8)}...</Pill>
+          <Pill tone="green">Snapshot: {String(snapshotId).slice(0, 8)}...</Pill>
         </div>
       )}
 

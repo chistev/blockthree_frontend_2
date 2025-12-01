@@ -1,3 +1,5 @@
+import React from 'react';
+
 const tooltips: Record<string, string> = {
   BTC_treasury: 'Total Bitcoin held in corporate treasury (in BTC).',
   BTC_current_market_price: 'Current market price of Bitcoin (USD, fetched live or editable).',
@@ -54,7 +56,6 @@ const tooltips: Record<string, string> = {
   jump_mean: 'Average size of jumps (log-return).',
   jump_volatility: 'Volatility of jump size.',
   opex_stress_volatility: 'Volatility applied to opex in stress scenarios.',
-  // bootstrap_samples removed
   wacc_cap: 'Upper bound on acceptable WACC in optimization.',
   min_profit_margin_constraint: 'Hard minimum profit margin for lenders.',
   kappa_btc: 'Weighting factor for BTC retention in hybrid scoring.',
@@ -105,13 +106,41 @@ export default function AssumptionGrid({
     }
   };
 
+  // Smart display formatting — preserves 0.37 as "0.37", never strips leading zero
+  const formatDisplay = (val: any): string => {
+    if (val === null || val === undefined || val === '') return '';
+    if (typeof val === 'number') {
+      if (Number.isInteger(val)) return val.toString();
+      // Use native toString() — it correctly keeps "0.37"
+      return val.toString();
+    }
+    return String(val);
+  };
+
+  // Safe parsing with support for partial input (e.g. "0.", ".", "-.")
+  const parseInput = (input: string): number | string => {
+    const val = input.trim();
+
+    if (val === '' || val === '-' || val === '.' || val === '-.' || val === '0.' || val === '-0.') {
+      return val; // allow temporary states
+    }
+
+    // Auto-fix common user inputs
+    let normalized = val;
+    if (normalized.startsWith('.')) normalized = '0' + normalized;
+    if (normalized.startsWith('-.')) normalized = '-0.' + normalized.slice(2);
+
+    const num = parseFloat(normalized);
+    return isNaN(num) ? normalized : num;
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {groupFields.map((key) => {
         if (key === 'deribit_iv_source' || key === 'objective_preset') return null;
 
-        const value = getValue(key);
-        const isBoolean = typeof value === 'boolean';
+        const rawValue = getValue(key);
+        const isBoolean = typeof rawValue === 'boolean';
 
         if (key === 'hedge_policy') {
           return (
@@ -128,7 +157,7 @@ export default function AssumptionGrid({
                 )}
               </div>
               <select
-                value={value || 'none'}
+                value={rawValue || 'none'}
                 onChange={(e) => updateValue(key, e.target.value)}
                 className="w-48 px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               >
@@ -155,27 +184,36 @@ export default function AssumptionGrid({
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tooltips[key]}</p>
               )}
             </div>
+
             {isBoolean ? (
               <input
                 type="checkbox"
-                checked={!!value}
+                checked={!!rawValue}
                 onChange={(e) => updateValue(key, e.target.checked)}
                 className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
               />
             ) : (
               <input
                 type="text"
-                value={value ?? ''}
+                inputMode="decimal"
+                pattern="[0-9]*\.?[0-9]*"
+                value={formatDisplay(rawValue)}
                 onChange={(e) => {
-                  const val = e.target.value.trim();
-                  if (val === '') {
-                    updateValue(key, null);
-                  } else {
-                    const num = parseFloat(val);
-                    updateValue(key, isNaN(num) ? val : num);
+                  const parsed = parseInput(e.target.value);
+                  updateValue(key, parsed);
+                }}
+                onBlur={() => {
+                  // On blur: convert string → clean number if possible
+                  const current = getValue(key);
+                  if (typeof current === 'string') {
+                    const num = parseFloat(current);
+                    if (!isNaN(num) && isFinite(num)) {
+                      updateValue(key, num);
+                    }
                   }
                 }}
-                className="w-32 px-3 py-2 text-right rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-32 px-3 py-2 text-right rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-sm tabular-nums"
+                placeholder="0.00"
               />
             )}
           </div>

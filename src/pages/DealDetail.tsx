@@ -16,7 +16,7 @@ interface Deal {
   createdAt: string;
   updatedAt: string;
   status: 'draft' | 'as_is_run' | 'optimized_run' | 'compared';
-  snapshotId?: string;
+  snapshotId?: string | null;
 }
 
 interface DealDetailProps {
@@ -49,7 +49,7 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
     setError(null);
 
     try {
-      // 1. Lock snapshot
+      // 1. Lock snapshot (unchanged)
       const lockRes = await authFetch('/api/lock_snapshot/', {
         method: 'POST',
         body: JSON.stringify({
@@ -64,8 +64,9 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
       }
 
       const { snapshot_id } = await lockRes.json();
+      const snapshotIdStr = String(snapshot_id);
 
-      // 2. Run calculation
+      // 2. Run calculation (unchanged)
       const calcRes = await authFetch('/api/calculate/', {
         method: 'POST',
         body: JSON.stringify({
@@ -81,25 +82,34 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
         throw new Error(err.error || 'Calculation failed');
       }
 
-      const results: any[] = await calcRes.json(); // ← Always 5 candidates from backend
+      // Parse the full response object
+      const data = await calcRes.json();
 
-      // Identify As-Is (match by current structure or fallback)
-      const currentStructure = (deal.assumptions.structure || '').toString().toLowerCase();
-      const asIsResult = results.find((c) =>
-        (c.type || '').toLowerCase().includes(currentStructure) ||
-        (c.params?.structure || '').toLowerCase() === currentStructure
-      ) || results[0];
+      // Extract as-is (it's a single object under 'as_is')
+      const asIsResult = data.as_is;
+
+      // Extract optimized candidates (array under 'candidates')
+      const optimizedResults = data.candidates || [];  // Fallback to empty array if missing
+
+      // Optional: The 'recommendation' is one of the candidates (e.g., "Hybrid Balanced").
+      // You could use it as the default selected in OptimizedView if needed.
+      // const recommended = data.recommendation;
+
+      // Validate we have data
+      if (!asIsResult || optimizedResults.length === 0) {
+        throw new Error('Invalid response structure from backend');
+      }
 
       // Update state
       if (type === 'as-is' || type === 'both') {
-        updateDeal({ asIsResults: asIsResult, snapshotId: snapshot_id });
+        updateDeal({ asIsResults: asIsResult, snapshotId: snapshotIdStr });
       }
       if (type === 'optimized' || type === 'both') {
-        updateDeal({ optimizedResults: results, snapshotId: snapshot_id });
+        updateDeal({ optimizedResults: optimizedResults, snapshotId: snapshotIdStr });
       }
       updateDeal({ status: type === 'both' ? 'compared' : type === 'as-is' ? 'as_is_run' : 'optimized_run' });
 
-      // Auto switch tab
+      // Auto switch tab (unchanged)
       setTab(type === 'as-is' ? 'as-is' : type === 'optimized' ? 'optimized' : 'comparison');
 
     } catch (err: any) {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatMoney, pct, structureLabel } from '../utils';
+import { formatMoney, num, pct, structureLabel } from '../utils';
 
 interface TermSheetProps {
   results: any; // Full candidate object from backend
@@ -49,7 +49,7 @@ export default function TermSheet({ results }: TermSheetProps) {
         </div>
         <div>
           <span className="text-gray-500 dark:text-gray-400">ROE Uplift</span>
-          <p className="font-medium">{pct(term.roe_uplift || 0)}</p>
+          <p className="font-medium">{num(term.roe_uplift || 0, 2)}%</p>
         </div>
       </div>
     </div>
