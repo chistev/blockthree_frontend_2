@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, SectionTitle, Pill, Button } from '../components/Primitives';
 import AssumptionGrid from './AssumptionGrid';
 
@@ -56,12 +55,16 @@ export default function Assumptions({
     },
     {
       title: 'Hedging',
-      fields: ['hedge_policy', 'hedge_intensity', 'hedge_tenor_days', 'deribit_iv_source', 'manual_iv'],
+      fields: [
+        'hedge_policy',
+        'hedge_intensity',
+        'hedge_tenor_days',
+        'manual_iv',
+      ],
     },
     {
       title: 'Optimizer Objectives & Constraints',
       fields: [
-        'objective_preset',
         'cvar_on',
         'max_dilution',
         'min_runway_months',
@@ -106,12 +109,11 @@ export default function Assumptions({
   const getModeTone = () => {
     if (mode === 'public') return 'blue';
     if (mode === 'private') return 'gray';
-    return 'yellow'; // pro-forma = yellow (distinct, valid tone)
+    return 'yellow';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header with Mode Pill */}
       <div className="flex justify-between items-center">
         <SectionTitle>Assumptions</SectionTitle>
         <div className="flex items-center gap-3">
@@ -122,7 +124,6 @@ export default function Assumptions({
         </div>
       </div>
 
-      {/* Main Parameter Groups */}
       {groups.map((group) => (
         <Card key={group.title} className="p-6">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-5">
@@ -136,7 +137,6 @@ export default function Assumptions({
         </Card>
       ))}
 
-      {/* Advanced Section */}
       <Card className="p-6">
         <div
           className="flex justify-between items-center cursor-pointer select-none"
@@ -154,7 +154,6 @@ export default function Assumptions({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </div>
-
         {advancedOpen && (
           <div className="mt-6">
             <AssumptionGrid

@@ -31,12 +31,10 @@ const tooltips: Record<string, string> = {
   haircut_h0: 'Initial haircut applied to BTC collateral value.',
   haircut_alpha: 'Rate at which haircut increases with LTV.',
   liquidation_penalty_bps: 'Penalty fee on liquidation (basis points).',
-  hedge_policy: 'Hedging strategy: none, delta, or collar.',
+  hedge_policy: 'Hedging strategy: None (no hedge) or Protective Put.',
   hedge_intensity: 'Percentage of exposure hedged (0.0–1.0).',
   hedge_tenor_days: 'Tenor of hedge instruments in days.',
-  deribit_iv_source: 'Volatility source for hedging calculations.',
   manual_iv: 'Manual implied volatility override for hedging.',
-  objective_preset: 'Pre-configured optimization preset (Defensive/Balanced/Growth).',
   cvar_on: 'Enable Conditional Value at Risk in optimization constraints.',
   max_dilution: 'Maximum allowed shareholder dilution (%).',
   min_runway_months: 'Minimum required cash runway in months.',
@@ -69,6 +67,11 @@ const tooltips: Record<string, string> = {
   lambda_wacc: 'Penalty weight for WACC constraint.',
   lambda_profit_margin: 'Penalty weight for lender margin constraint.',
 };
+
+const HEDGE_POLICY_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'protective_put', label: 'Protective Put' },
+] as const;
 
 export default function AssumptionGrid({
   assumptions,
@@ -105,9 +108,45 @@ export default function AssumptionGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {groupFields.map((key) => {
+        // Skip removed fields
+        if (key === 'deribit_iv_source' || key === 'objective_preset') {
+          return null;
+        }
+
         const value = getValue(key);
         const isBoolean = typeof value === 'boolean';
 
+        // Special dropdown for hedge_policy
+        if (key === 'hedge_policy') {
+          return (
+            <div
+              key={key}
+              className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-gray-200 dark:border-zinc-700 p-4 bg-gray-50/50 dark:bg-zinc-800/50"
+            >
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Hedge Policy
+                </label>
+                {tooltips[key] && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tooltips[key]}</p>
+                )}
+              </div>
+              <select
+                value={value || 'none'}
+                onChange={(e) => updateValue(key, e.target.value)}
+                className="w-48 px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              >
+                {HEDGE_POLICY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+
+        // Default rendering for all other fields
         return (
           <div
             key={key}
@@ -121,7 +160,6 @@ export default function AssumptionGrid({
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tooltips[key]}</p>
               )}
             </div>
-
             {isBoolean ? (
               <input
                 type="checkbox"
