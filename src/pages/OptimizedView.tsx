@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Card, SectionTitle, Button, Stat, Pill } from '../components/Primitives';
 import TermSheet from '../components/TermSheet';
+import FanChart from '../charts/FanChart';
+import HistogramWithThreshold from '../charts/HistogramWithThreshold';
+// import TornadoChart from './charts/TornadoChart';
+import RunwayBox from '../charts/RunwayBox';
 import { formatMoney, pct, months, riskTone, structureLabel, num } from '../utils';
 
 interface Candidate {
@@ -35,10 +39,20 @@ export default function OptimizedView({ results }: OptimizedViewProps) {
 
   const cand = results[selectedIdx];
   const candMetrics = cand.metrics || {};
+  const candParams = cand.params || {};
+
+  // Debug log - put it here, outside the JSX
+  console.log('LTV data for histogram:', {
+    hasLtvPaths: !!candMetrics.ltv?.ltv_paths,
+    ltvPaths: candMetrics.ltv?.ltv_paths,
+    ltvPathsLength: candMetrics.ltv?.ltv_paths?.length,
+    ltvCap: candParams.ltv_cap,
+    structure: candParams.structure
+  });
 
   // Risk assessment based on LTV breach probability only
   const ltvBreachProb = candMetrics.ltv?.exceed_prob ?? 0;
-  const riskLevel = riskTone(ltvBreachProb); // 'good' | 'neutral' | 'bad'
+  const riskLevel = riskTone(ltvBreachProb);
 
   // Structure pill tone
   const getStructureTone = (struct: string | undefined): 'blue' | 'gray' | 'yellow' | 'green' | 'red' => {
@@ -49,7 +63,7 @@ export default function OptimizedView({ results }: OptimizedViewProps) {
     return 'green';
   };
 
-  const structureTone = getStructureTone(cand.params?.structure || cand.type);
+  const structureTone = getStructureTone(candParams.structure || cand.type);
 
   return (
     <div className="space-y-8">
@@ -72,22 +86,8 @@ export default function OptimizedView({ results }: OptimizedViewProps) {
         <div className="flex items-center justify-between mb-8">
           <SectionTitle>{cand.type || 'Optimized Candidate'}</SectionTitle>
           <Pill tone={structureTone}>
-            {structureLabel(cand.params?.structure || cand.type)}
+            {structureLabel(candParams.structure || cand.type)}
           </Pill>
-        </div>
-
-        {/* Risk Indicator Bar 
-        <div className="h-2 bg-gray-200 dark:bg-zinc-700 rounded-full overflow-hidden mb-8">
-          <div
-            className={`h-full transition-all duration-700 ${
-              riskLevel === 'good' ? 'bg-green-500 w-1/3' :
-              riskLevel === 'neutral' ? 'bg-yellow-500 w-2/3' :
-              'bg-red-500 w-full'
-            }`}
-          />
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center">
-            LTV Breach Risk: {pct(ltvBreachProb)}
-          </p>
         </div>
 
         {/* Core Metrics Grid */}
@@ -112,35 +112,34 @@ export default function OptimizedView({ results }: OptimizedViewProps) {
           <TermSheet results={cand} />
         </div>
 
-        {/* Charts Section – placeholders with exact same styling as original */}
+        {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
-          <Card className="p-6">
+          {/* Fan Chart for NAV distribution */}
+          <div className="bg-white dark:bg-zinc-800/50 rounded-xl p-6">
             <SectionTitle>NAV Distribution Fan Chart</SectionTitle>
-            <div className="h-64 bg-gray-100 dark:bg-zinc-800/50 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">FanChart component placeholder</p>
-            </div>
-          </Card>
+            <FanChart data={candMetrics.nav?.nav_paths || []} />
+          </div>
 
-          <Card className="p-6">
+          {/* Histogram for LTV distribution */}
+          <div className="bg-white dark:bg-zinc-800/50 rounded-xl p-6">
             <SectionTitle>LTV Path Distribution</SectionTitle>
-            <div className="h-64 bg-gray-100 dark:bg-zinc-800/50 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">HistogramWithThreshold placeholder</p>
-            </div>
-          </Card>
+            <HistogramWithThreshold 
+              data={candMetrics.ltv?.ltv_paths || []} 
+              threshold={candParams.ltv_cap || 0.5} 
+            />
+          </div>
 
-          <Card className="p-6">
+          {/* Tornado Chart for sensitivity - NOTE: This won't show until backend adds sensitivity data */}
+          {/* <div className="bg-white dark:bg-zinc-800/50 rounded-xl p-6">
             <SectionTitle>Sensitivity Analysis</SectionTitle>
-            <div className="h-64 bg-gray-100 dark:bg-zinc-800/50 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">TornadoChart placeholder</p>
-            </div>
-          </Card>
+            <TornadoChart data={candMetrics.sensitivity || []} />
+          </div> */}
 
-          <Card className="p-6">
+          {/* Runway Box Plot */}
+          <div className="bg-white dark:bg-zinc-800/50 rounded-xl p-6">
             <SectionTitle>Runway Distribution</SectionTitle>
-            <div className="h-64 bg-gray-100 dark:bg-zinc-800/50 rounded-lg flex items-center justify-center">
-              <p className="text-gray-500">RunwayBox placeholder</p>
-            </div>
-          </Card>
+            <RunwayBox data={candMetrics} />
+          </div>
         </div>
       </Card>
     </div>
