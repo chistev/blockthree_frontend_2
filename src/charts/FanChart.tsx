@@ -28,7 +28,7 @@ export default function FanChart({ data }: FanChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+      <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 40, bottom: 20 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.2} />
         <XAxis dataKey="name" stroke="#9CA3AF" />
         <YAxis tickFormatter={(v) => formatMoney(v, 0)} stroke="#9CA3AF" />
