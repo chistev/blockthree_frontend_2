@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+// DealDetail.tsx
+import React, { useState, useEffect } from 'react';
 import Assumptions from './Assumptions';
 import AsIsView from './AsIsView';
-import OptimizedView from './OptimizedView';  // ← Now matches the simplified version we use
+import OptimizedView from './OptimizedView';
 import ComparisonView from './ComparisonView';
 import { Card, SectionTitle, Button, Pill } from '../components/Primitives';
 import { authFetch } from '../auth';
+import { toastSuccess, toastError } from '../utils';
 
 interface Deal {
   id: string;
@@ -12,7 +14,7 @@ interface Deal {
   mode: 'public' | 'private' | 'pro-forma';
   assumptions: any;
   asIsResults?: any;
-  optimizedResults?: any[];  // Array because backend returns 5 candidates
+  optimizedResults?: any[];
   createdAt: string;
   updatedAt: string;
   status: 'draft' | 'as_is_run' | 'optimized_run' | 'compared';
@@ -34,6 +36,7 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
   const [tab, setTab] = useState<'as-is' | 'optimized' | 'comparison'>('as-is');
   const [name, setName] = useState(deal.name);
   const [isLoading, setIsLoading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const updateDeal = (updates: Partial<Deal>) => {
@@ -44,12 +47,39 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
     );
   };
 
+  // Auto-fetch live BTC price on mount or when deal changes
+  useEffect(() => {
+    const fetchLiveBtcPrice = async () => {
+      try {
+        const res = await authFetch('/api/btc_price/');
+        if (!res.ok) return;
+        const data = await res.json();
+        const livePrice = Math.round(data.BTC_current_market_price);
+
+        updateDeal({
+          assumptions: {
+            ...deal.assumptions,
+            BTC_current_market_price: livePrice,
+            targetBTCPrice: livePrice,
+          },
+        });
+
+        if (deal.assumptions.BTC_current_market_price !== livePrice) {
+          toastSuccess?.(`Live BTC Price Updated: $${livePrice.toLocaleString()}`);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch live BTC price (non-critical)');
+      }
+    };
+
+    fetchLiveBtcPrice();
+  }, [dealId]);
+
   const runCalculation = async (type: 'as-is' | 'optimized' | 'both') => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // 1. Lock snapshot (unchanged)
       const lockRes = await authFetch('/api/lock_snapshot/', {
         method: 'POST',
         body: JSON.stringify({
@@ -66,7 +96,6 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
       const { snapshot_id } = await lockRes.json();
       const snapshotIdStr = String(snapshot_id);
 
-      // 2. Run calculation (unchanged)
       const calcRes = await authFetch('/api/calculate/', {
         method: 'POST',
         body: JSON.stringify({
@@ -82,40 +111,88 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
         throw new Error(err.error || 'Calculation failed');
       }
 
-      // Parse the full response object
       const data = await calcRes.json();
-
-      // Extract as-is (it's a single object under 'as_is')
       const asIsResult = data.as_is;
+      const optimizedResults = data.candidates || [];
 
-      // Extract optimized candidates (array under 'candidates')
-      const optimizedResults = data.candidates || [];  // Fallback to empty array if missing
-
-      // Optional: The 'recommendation' is one of the candidates (e.g., "Hybrid Balanced").
-      // You could use it as the default selected in OptimizedView if needed.
-      // const recommended = data.recommendation;
-
-      // Validate we have data
       if (!asIsResult || optimizedResults.length === 0) {
-        throw new Error('Invalid response structure from backend');
+        throw new Error('Invalid response structure');
       }
 
-      // Update state
       if (type === 'as-is' || type === 'both') {
         updateDeal({ asIsResults: asIsResult, snapshotId: snapshotIdStr });
       }
       if (type === 'optimized' || type === 'both') {
         updateDeal({ optimizedResults: optimizedResults, snapshotId: snapshotIdStr });
       }
-      updateDeal({ status: type === 'both' ? 'compared' : type === 'as-is' ? 'as_is_run' : 'optimized_run' });
+      updateDeal({
+        status: type === 'both' ? 'compared' : type === 'as-is' ? 'as_is_run' : 'optimized_run',
+      });
 
-      // Auto switch tab (unchanged)
       setTab(type === 'as-is' ? 'as-is' : type === 'optimized' ? 'optimized' : 'comparison');
-
+      toastSuccess('Calculation completed!');
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
+      toastError(err.message || 'Calculation failed');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const exportToCSV = async () => {
+    if (!deal.snapshotId) {
+      toastError('Run a calculation first');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const res = await authFetch('/api/calculate/', {
+        method: 'POST',
+        body: JSON.stringify({
+          snapshot_id: deal.snapshotId,
+          format: 'csv',
+          use_live: false,
+          seed: 42,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Export failed');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${deal.name.replace(/\s+/g, '-')}-${tab}-export.csv`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toastSuccess('CSV exported!');
+    } catch {
+      toastError('Export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const refreshBtcPrice = async () => {
+    try {
+      const res = await authFetch('/api/btc_price/');
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const livePrice = Math.round(data.BTC_current_market_price);
+
+      updateDeal({
+        assumptions: {
+          ...deal.assumptions,
+          BTC_current_market_price: livePrice,
+          targetBTCPrice: livePrice,
+        },
+      });
+
+      toastSuccess(`BTC Price Refreshed: $${livePrice.toLocaleString()}`);
+    } catch {
+      toastError('Failed to refresh price');
     }
   };
 
@@ -135,7 +212,7 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
         </Pill>
       </SectionTitle>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3 items-center">
         <Button onClick={() => runCalculation('as-is')} disabled={isLoading}>
           Run As-Is
         </Button>
@@ -145,6 +222,25 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
         <Button onClick={() => runCalculation('both')} disabled={isLoading}>
           Run Both & Compare
         </Button>
+
+        {/* Live BTC Price + Refresh */}
+        <div className="flex items-center gap-3 ml-6">
+          <span className="text-sm text-gray-600 dark:text-gray-400">Live BTC:</span>
+          <Pill tone="green">
+            ${Number(deal.assumptions.BTC_current_market_price || 0).toLocaleString()}
+          </Pill>
+          <Button
+            variant="secondary"
+            onClick={refreshBtcPrice}
+            className="px-3 py-1.5 text-xs"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+          </Button>
+        </div>
       </div>
 
       {isLoading && (
@@ -164,7 +260,6 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Assumptions – always visible */}
         <div>
           <Assumptions
             assumptions={deal.assumptions}
@@ -174,34 +269,55 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
             handleCalculate={() => runCalculation('optimized')}
             snapshotId={deal.snapshotId}
             isLoading={isLoading}
-            progress={0} // not used in current Assumptions, safe
+            progress={0}
             error={error}
           />
         </div>
 
-        {/* Results Panel */}
         <Card className="p-6">
-          <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-zinc-700 pb-3">
+          <div className="flex justify-between items-center mb-6 border-b border-gray-200 dark:border-zinc-700 pb-3">
+            <div className="flex gap-2">
+              <Button
+                variant={tab === 'as-is' ? 'primary' : 'ghost'}
+                onClick={() => setTab('as-is')}
+                disabled={!deal.asIsResults}
+              >
+                As-Is
+              </Button>
+              <Button
+                variant={tab === 'optimized' ? 'primary' : 'ghost'}
+                onClick={() => setTab('optimized')}
+                disabled={!deal.optimizedResults}
+              >
+                Optimized
+              </Button>
+              <Button
+                variant={tab === 'comparison' ? 'primary' : 'ghost'}
+                onClick={() => setTab('comparison')}
+                disabled={!deal.asIsResults || !deal.optimizedResults}
+              >
+                Comparison
+              </Button>
+            </div>
+
             <Button
-              variant={tab === 'as-is' ? 'primary' : 'ghost'}
-              onClick={() => setTab('as-is')}
-              disabled={!deal.asIsResults}
+              onClick={exportToCSV}
+              disabled={!deal.snapshotId || isExporting || !(deal.asIsResults || deal.optimizedResults)}
+              variant="secondary"
+              className="flex items-center gap-2"
             >
-              As-Is
-            </Button>
-            <Button
-              variant={tab === 'optimized' ? 'primary' : 'ghost'}
-              onClick={() => setTab('optimized')}
-              disabled={!deal.optimizedResults}
-            >
-              Optimized
-            </Button>
-            <Button
-              variant={tab === 'comparison' ? 'primary' : 'ghost'}
-              onClick={() => setTab('comparison')}
-              disabled={!deal.asIsResults || !deal.optimizedResults}
-            >
-              Comparison
+              {isExporting ? (
+                <>Exporting...</>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  Export CSV
+                </>
+              )}
             </Button>
           </div>
 
@@ -210,7 +326,7 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
           {tab === 'comparison' && deal.asIsResults && deal.optimizedResults && (
             <ComparisonView asIs={deal.asIsResults} optimized={deal.optimizedResults} />
           )}
-          {!deal.asIsResults && !deal.optimizedResults && tab !== 'as-is' && (
+          {!deal.asIsResults && !deal.optimizedResults && (
             <p className="text-center text-gray-500 py-12">Run a scenario to see results</p>
           )}
         </Card>

@@ -1,5 +1,3 @@
-import React from 'react';
-
 const tooltips: Record<string, string> = {
   BTC_treasury: 'Total Bitcoin held in corporate treasury (in BTC).',
   BTC_current_market_price: 'Current market price of Bitcoin (USD, fetched live or editable).',

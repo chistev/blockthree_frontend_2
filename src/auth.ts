@@ -37,3 +37,18 @@ export const authFetch = async (endpoint: string, options: RequestInit = {}) => 
     headers,
   });
 };
+
+// NEW: Function to fetch live BTC price
+export const fetchLiveBTCPrice = async (): Promise<number | null> => {
+  try {
+    const response = await authFetch('/api/btc_price/');
+    if (!response.ok) {
+      throw new Error('Failed to fetch BTC price');
+    }
+    const data = await response.json();
+    return data.BTC_current_market_price;
+  } catch (error) {
+    console.error('Error fetching BTC price:', error);
+    return null;
+  }
+};
