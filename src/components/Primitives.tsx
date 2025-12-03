@@ -101,7 +101,15 @@ export const Stat: React.FC<StatProps> = ({ label, value, tone = 'neutral' }) =>
   return (
     <div>
       <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
-      <p className={`text-2xl font-bold ${toneColors[tone]}`}>{value}</p>
+      <p
+  className={`
+    text-xl font-bold leading-snug tracking-tight
+    ${toneColors[tone]}
+  `}
+>
+  {value}
+</p>
+
     </div>
   );
 };

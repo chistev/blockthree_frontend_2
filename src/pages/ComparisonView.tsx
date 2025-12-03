@@ -19,7 +19,7 @@ export default function ComparisonView({ asIs, optimized }: ComparisonViewProps)
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card className="p-8">
           <SectionTitle>As-Is Scenario (Exact Terms)</SectionTitle>
-          <div className="grid grid-cols-2 gap-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <Stat label="Expected NAV" value={formatMoney(asIsMetrics.nav?.avg_nav ?? 0)} />
             <Stat label="LTV Breach Prob" value={pct(asIsMetrics.ltv?.exceed_prob ?? 0)} />
             <Stat label="Dilution" value={pct(asIsMetrics.dilution?.avg_dilution ?? 0)} />
@@ -38,7 +38,8 @@ export default function ComparisonView({ asIs, optimized }: ComparisonViewProps)
             <Pill tone="yellow">{bestOptimized.type || 'Hybrid'}</Pill>
             <span className="text-sm text-gray-500">← unconstrained optimization</span>
           </div>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
             <Stat label="Expected NAV" value={formatMoney(optMetrics.nav?.avg_nav ?? 0)} />
             <Stat label="LTV Breach Prob" value={pct(optMetrics.ltv?.exceed_prob ?? 0)} />
             <Stat label="Dilution" value={pct(optMetrics.dilution?.avg_dilution ?? 0)} />
