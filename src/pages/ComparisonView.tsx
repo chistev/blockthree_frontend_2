@@ -18,7 +18,7 @@ export default function ComparisonView({ asIs, optimized }: ComparisonViewProps)
       {/* Top Side-by-Side Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <Card className="p-8">
-          <SectionTitle>As-Is Scenario (Exact Terms)</SectionTitle>
+          <SectionTitle>As-Is Scenario</SectionTitle>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <Stat label="Expected NAV" value={formatMoney(asIsMetrics.nav?.avg_nav ?? 0)} />
             <Stat label="LTV Breach Prob" value={pct(asIsMetrics.ltv?.exceed_prob ?? 0)} />
@@ -36,7 +36,6 @@ export default function ComparisonView({ asIs, optimized }: ComparisonViewProps)
           <SectionTitle>Best Optimized Scenario</SectionTitle>
           <div className="flex items-center gap-3 mb-6">
             <Pill tone="yellow">{bestOptimized.type || 'Hybrid'}</Pill>
-            <span className="text-sm text-gray-500">← unconstrained optimization</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 

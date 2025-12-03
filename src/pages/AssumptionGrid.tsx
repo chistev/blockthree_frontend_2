@@ -72,6 +72,31 @@ const HEDGE_POLICY_OPTIONS = [
   { value: 'protective_put', label: 'Protective Put' },
 ] as const;
 
+// Smart label formatter — handles camelCase, snake_case, and keeps acronyms uppercase
+const formatLabel = (key: string): string => {
+  // Insert spaces between camelCase parts and handle acronyms
+  let spaced = key
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')  // BTCPrice → BTC Price
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')      // LoanPrincipal → Loan Principal
+    .replace(/_/g, ' ')
+    .trim();
+
+  return spaced
+    .split(' ')
+    .map((word) => {
+      const upper = word.toUpperCase();
+      const acronyms = [
+        'BTC', 'LTV', 'NAV', 'WACC', 'CAPM', 'ROE', 'NOL', 'NOLS', 'ATM', 'PIPE',
+        'CVAR', 'NSGA', 'OID', 'ECM', 'H0', 'ADV', 'BPS', 'IV', 'FD'
+      ];
+      if (acronyms.includes(upper)) {
+        return upper;
+      }
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    })
+    .join(' ');
+};
+
 export default function AssumptionGrid({
   assumptions,
   setAssumptions,
@@ -104,26 +129,21 @@ export default function AssumptionGrid({
     }
   };
 
-  // Smart display formatting — preserves 0.37 as "0.37", never strips leading zero
   const formatDisplay = (val: any): string => {
     if (val === null || val === undefined || val === '') return '';
     if (typeof val === 'number') {
       if (Number.isInteger(val)) return val.toString();
-      // Use native toString() — it correctly keeps "0.37"
       return val.toString();
     }
     return String(val);
   };
 
-  // Safe parsing with support for partial input (e.g. "0.", ".", "-.")
   const parseInput = (input: string): number | string => {
     const val = input.trim();
-
     if (val === '' || val === '-' || val === '.' || val === '-.' || val === '0.' || val === '-0.') {
-      return val; // allow temporary states
+      return val;
     }
 
-    // Auto-fix common user inputs
     let normalized = val;
     if (normalized.startsWith('.')) normalized = '0' + normalized;
     if (normalized.startsWith('-.')) normalized = '-0.' + normalized.slice(2);
@@ -176,7 +196,7 @@ export default function AssumptionGrid({
           >
             <div className="flex-1">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                {formatLabel(key)}
               </label>
               {tooltips[key] && (
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tooltips[key]}</p>
@@ -201,7 +221,6 @@ export default function AssumptionGrid({
                   updateValue(key, parsed);
                 }}
                 onBlur={() => {
-                  // On blur: convert string → clean number if possible
                   const current = getValue(key);
                   if (typeof current === 'string') {
                     const num = parseFloat(current);

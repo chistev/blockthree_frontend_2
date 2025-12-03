@@ -179,13 +179,11 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
 
     setIsExporting(true);
     try {
-      const res = await authFetch('/api/calculate/', {
+      const res = await authFetch('/api/export/', {
         method: 'POST',
         body: JSON.stringify({
           snapshot_id: deal.snapshotId,
           format: 'csv',
-          use_live: false,
-          seed: 42,
         }),
       });
 
