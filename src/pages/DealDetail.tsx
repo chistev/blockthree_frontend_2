@@ -76,68 +76,100 @@ export default function DealDetail({ dealId, deals, setDeals, setPage, token }: 
   }, [dealId]);
 
   const runCalculation = async (type: 'as-is' | 'optimized' | 'both') => {
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      const lockRes = await authFetch('/api/lock_snapshot/', {
-        method: 'POST',
-        body: JSON.stringify({
-          assumptions: deal.assumptions,
-          mode: deal.mode,
-        }),
-      });
+  try {
+    // 1. Lock snapshot (only once)
+    const lockRes = await authFetch('/api/lock_snapshot/', {
+      method: 'POST',
+      body: JSON.stringify({
+        assumptions: deal.assumptions,
+        mode: deal.mode,
+      }),
+    });
 
-      if (!lockRes.ok) {
-        const err = await lockRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to lock snapshot');
-      }
+    if (!lockRes.ok) {
+      const err = await lockRes.json().catch(() => ({}));
+      throw new Error(err.error || 'Failed to lock snapshot');
+    }
 
-      const { snapshot_id } = await lockRes.json();
-      const snapshotIdStr = String(snapshot_id);
+    const { snapshot_id } = await lockRes.json();
+    const snapshotIdStr = String(snapshot_id);
 
-      const calcRes = await authFetch('/api/calculate/', {
+    // 2. Run As-Is (if needed)
+    let asIsResult: any = null;
+    if (type === 'as-is' || type === 'both') {
+      const asIsRes = await authFetch('/api/calculate/', {
         method: 'POST',
         body: JSON.stringify({
           snapshot_id,
           format: 'json',
           use_live: false,
           seed: 42,
+          optimize: false,  // ← THIS IS CRITICAL
         }),
       });
 
-      if (!calcRes.ok) {
-        const err = await calcRes.json().catch(() => ({}));
-        throw new Error(err.error || 'Calculation failed');
+      if (!asIsRes.ok) {
+        const err = await asIsRes.json().catch(() => ({}));
+        throw new Error(`As-Is failed: ${err.error || 'Unknown error'}`);
       }
 
-      const data = await calcRes.json();
-      const asIsResult = data.as_is;
-      const optimizedResults = data.candidates || [];
+      const asIsData = await asIsRes.json();
+      asIsResult = asIsData.as_is;
 
-      if (!asIsResult || optimizedResults.length === 0) {
-        throw new Error('Invalid response structure');
-      }
+      if (!asIsResult) throw new Error('As-Is returned no result');
+    }
 
-      if (type === 'as-is' || type === 'both') {
-        updateDeal({ asIsResults: asIsResult, snapshotId: snapshotIdStr });
-      }
-      if (type === 'optimized' || type === 'both') {
-        updateDeal({ optimizedResults: optimizedResults, snapshotId: snapshotIdStr });
-      }
-      updateDeal({
-        status: type === 'both' ? 'compared' : type === 'as-is' ? 'as_is_run' : 'optimized_run',
+    // 3. Run Optimized (if needed)
+    let optimizedResults: any[] = [];
+    if (type === 'optimized' || type === 'both') {
+      const optRes = await authFetch('/api/calculate/', {
+        method: 'POST',
+        body: JSON.stringify({
+          snapshot_id,
+          format: 'json',
+          use_live: false,
+          seed: 42,
+          optimize: true,   // ← Explicit (or omit = defaults to true)
+        }),
       });
 
-      setTab(type === 'as-is' ? 'as-is' : type === 'optimized' ? 'optimized' : 'comparison');
-      toastSuccess('Calculation completed!');
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
-      toastError(err.message || 'Calculation failed');
-    } finally {
-      setIsLoading(false);
+      if (!optRes.ok) {
+        const err = await optRes.json().catch(() => ({}));
+        throw new Error(`Optimized failed: ${err.error || 'Unknown error'}`);
+      }
+
+      const optData = await optRes.json();
+      optimizedResults = optData.candidates || [];
     }
-  };
+
+    // 4. Update state
+    if (asIsResult) {
+      updateDeal({ asIsResults: asIsResult, snapshotId: snapshotIdStr });
+    }
+    if (optimizedResults.length > 0) {
+      updateDeal({ optimizedResults, snapshotId: snapshotIdStr });
+    }
+
+    const newStatus = type === 'both' ? 'compared' : type === 'as-is' ? 'as_is_run' : 'optimized_run';
+    updateDeal({ status: newStatus });
+
+    // Auto-switch tab
+    if (type === 'as-is') setTab('as-is');
+    else if (type === 'optimized') setTab('optimized');
+    else setTab('comparison');
+
+    toastSuccess('Calculation completed!');
+
+  } catch (err: any) {
+    setError(err.message || 'Something went wrong');
+    toastError(err.message || 'Calculation failed');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const exportToCSV = async () => {
     if (!deal.snapshotId) {

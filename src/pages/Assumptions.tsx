@@ -116,6 +116,11 @@ export default function Assumptions({
           <Pill tone={getModeTone()}>
             {mode.charAt(0).toUpperCase() + mode.slice(1).replace('-', ' ')}
           </Pill>
+          {assumptions.structure && (
+            <Pill tone="blue">
+              {assumptions.structure.replace('+', ' + ').toUpperCase()}
+            </Pill>
+          )}
         </div>
       </div>
 
@@ -143,9 +148,8 @@ export default function Assumptions({
             Advanced Parameters
           </h3>
           <svg
-            className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${
-              advancedOpen ? 'rotate-180' : ''
-            }`}
+            className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${advancedOpen ? 'rotate-180' : ''
+              }`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -155,9 +159,8 @@ export default function Assumptions({
         </div>
 
         <div
-          className={`overflow-hidden transition-all duration-300 ease-in-out ${
-            advancedOpen ? 'max-h-screen opacity-100 mt-6' : 'max-h-0 opacity-0'
-          }`}
+          className={`overflow-hidden transition-all duration-300 ease-in-out ${advancedOpen ? 'max-h-screen opacity-100 mt-6' : 'max-h-0 opacity-0'
+            }`}
         >
           <AssumptionGrid
             assumptions={assumptions}
@@ -166,7 +169,28 @@ export default function Assumptions({
           />
         </div>
       </Card>
-
+      {/* Structure Selector */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          Financing Structure (As-Is)
+        </label>
+        <select
+          value={assumptions.structure || 'loan'}
+          onChange={(e) => setAssumptions({ ...assumptions, structure: e.target.value })}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        >
+          <option value="loan">Loan</option>
+          <option value="convertible">Convertible</option>
+          <option value="pipe">PIPE</option>
+          <option value="atm">ATM</option>
+          <option value="loan+pipe">Hybrid (Loan + PIPE)</option>
+          <option value="loan+atm">Hybrid (Loan + ATM)</option>
+          <option value="convertible+pipe">Hybrid (Conv + PIPE)</option>
+        </select>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+          This structure is used exactly in "Run As-Is" mode.
+        </p>
+      </div>
       <Button
         onClick={handleCalculate}
         disabled={isLoading}
