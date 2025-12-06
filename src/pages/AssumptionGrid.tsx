@@ -1,3 +1,6 @@
+// AssumptionGrid.tsx
+import React from 'react';
+
 const tooltips: Record<string, string> = {
   BTC_treasury: 'Total Bitcoin held in corporate treasury (in BTC).',
   BTC_current_market_price: 'Current market price of Bitcoin (USD, fetched live or editable).',
@@ -22,7 +25,7 @@ const tooltips: Record<string, string> = {
   nols: 'Net Operating Losses available for tax shield (USD).',
   annual_burn_rate: 'Annual cash burn rate (typically opex_monthly × 12).',
   initial_cash: 'Starting cash balance on balance sheet (USD).',
-  adv_30d: '30-day average daily trading volume in dollars (for ATM sizing).',
+  adv_30d: '30-day average dailye trading volume in dollars (for ATM sizing).',
   atm_pct_adv: 'Percentage of 30-day ADV used in At-The-Market offerings.',
   pipe_discount: 'Discount to market price for PIPE transactions.',
   fees_ecm: 'Equity capital markets / placement agent fees (% of raise).',
@@ -72,12 +75,11 @@ const HEDGE_POLICY_OPTIONS = [
   { value: 'protective_put', label: 'Protective Put' },
 ] as const;
 
-// Smart label formatter — handles camelCase, snake_case, and keeps acronyms uppercase
+// Smart label formatter
 const formatLabel = (key: string): string => {
-  // Insert spaces between camelCase parts and handle acronyms
   let spaced = key
-    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')  // BTCPrice → BTC Price
-    .replace(/([a-z\d])([A-Z])/g, '$1 $2')      // LoanPrincipal → Loan Principal
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2')
+    .replace(/([a-z\d])([A-Z])/g, '$1 $2')
     .replace(/_/g, ' ')
     .trim();
 
@@ -89,9 +91,7 @@ const formatLabel = (key: string): string => {
         'BTC', 'LTV', 'NAV', 'WACC', 'CAPM', 'ROE', 'NOL', 'NOLS', 'ATM', 'PIPE',
         'CVAR', 'NSGA', 'OID', 'ECM', 'H0', 'ADV', 'BPS', 'IV', 'FD'
       ];
-      if (acronyms.includes(upper)) {
-        return upper;
-      }
+      if (acronyms.includes(upper)) return upper;
       return word.charAt(0).toUpperCase() + word.slice(1);
     })
     .join(' ');
@@ -108,9 +108,9 @@ export default function AssumptionGrid({
 }) {
   const getValue = (key: string): any => {
     if (key.includes('.')) {
-      return key.split('.').reduce((o, k) => (o || {})[k], assumptions);
+      return key.split('.').reduce((o, k) => (o || {})[k], assumptions) ?? '';
     }
-    return assumptions[key];
+    return assumptions[key] ?? '';
   };
 
   const updateValue = (key: string, value: any) => {
@@ -129,27 +129,39 @@ export default function AssumptionGrid({
     }
   };
 
+  // Always display as string
   const formatDisplay = (val: any): string => {
     if (val === null || val === undefined || val === '') return '';
-    if (typeof val === 'number') {
-      if (Number.isInteger(val)) return val.toString();
-      return val.toString();
-    }
     return String(val);
   };
 
-  const parseInput = (input: string): number | string => {
-    const val = input.trim();
-    if (val === '' || val === '-' || val === '.' || val === '-.' || val === '0.' || val === '-0.') {
-      return val;
+  // Parse and clean up only on blur
+  const handleBlur = (key: string, rawValue: string) => {
+    const trimmed = rawValue.trim();
+    if (trimmed === '' || trimmed === '.' || trimmed === '-' || trimmed === '-0') {
+      updateValue(key, '');
+      return;
     }
 
-    let normalized = val;
-    if (normalized.startsWith('.')) normalized = '0' + normalized;
-    if (normalized.startsWith('-.')) normalized = '-0.' + normalized.slice(2);
+    const num = parseFloat(trimmed);
+    if (!isNaN(num) && isFinite(num)) {
+      // Special formatting for percentage/rate fields (show 4 decimals)
+      const isRateField = [
+        'risk_free_rate', 'cost_of_debt', 'sigma', 'mu', 'tax_rate',
+        'pipe_discount', 'atm_pct_adv', 'fees_ecm', 'fees_oid',
+        'haircut_h0', 'haircut_alpha', 'hedge_intensity', 'manual_iv',
+        'max_dilution', 'max_breach_prob', 'min_profit_margin',
+        'min_profit_margin_constraint', 'wacc_cap', 'lambda_dilution',
+        'lambda_runway', 'lambda_breach', 'lambda_wacc', 'lambda_profit_margin'
+      ].includes(key);
 
-    const num = parseFloat(normalized);
-    return isNaN(num) ? normalized : num;
+      if (isRateField) {
+        // Keep as number, rounded to 6 decimals (clean, no trailing zeros on display)
+        updateValue(key, Number(num.toFixed(6)));
+      } else {
+        updateValue(key, num);
+      }
+    }
   };
 
   return (
@@ -158,8 +170,9 @@ export default function AssumptionGrid({
         if (key === 'deribit_iv_source' || key === 'objective_preset') return null;
 
         const rawValue = getValue(key);
-        const isBoolean = typeof rawValue === 'boolean';
+        const isBoolean = typeof assumptions[key] === 'boolean' || rawValue === true || rawValue === false;
 
+        // Special case: Hedge Policy dropdown
         if (key === 'hedge_policy') {
           return (
             <div
@@ -189,6 +202,32 @@ export default function AssumptionGrid({
           );
         }
 
+        // Boolean fields (checkboxes)
+        if (isBoolean) {
+          return (
+            <div
+              key={key}
+              className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl border border-gray-200 dark:border-zinc-700 p-4 bg-gray-50/50 dark:bg-zinc-800/50"
+            >
+              <div className="flex-1">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  {formatLabel(key)}
+                </label>
+                {tooltips[key] && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{tooltips[key]}</p>
+                )}
+              </div>
+              <input
+                type="checkbox"
+                checked={!!rawValue}
+                onChange={(e) => updateValue(key, e.target.checked)}
+                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+              />
+            </div>
+          );
+        }
+
+        // All numeric / text fields
         return (
           <div
             key={key}
@@ -203,36 +242,18 @@ export default function AssumptionGrid({
               )}
             </div>
 
-            {isBoolean ? (
-              <input
-                type="checkbox"
-                checked={!!rawValue}
-                onChange={(e) => updateValue(key, e.target.checked)}
-                className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
-              />
-            ) : (
-              <input
-                type="text"
-                inputMode="decimal"
-                pattern="[0-9]*\.?[0-9]*"
-                value={formatDisplay(rawValue)}
-                onChange={(e) => {
-                  const parsed = parseInput(e.target.value);
-                  updateValue(key, parsed);
-                }}
-                onBlur={() => {
-                  const current = getValue(key);
-                  if (typeof current === 'string') {
-                    const num = parseFloat(current);
-                    if (!isNaN(num) && isFinite(num)) {
-                      updateValue(key, num);
-                    }
-                  }
-                }}
-                className="w-32 px-3 py-2 text-right rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-sm tabular-nums"
-                placeholder="0.00"
-              />
-            )}
+            <input
+              type="text"
+              inputMode="decimal"
+              value={formatDisplay(rawValue)}
+              onChange={(e) => {
+                // Allow any typing — we keep it as string
+                updateValue(key, e.target.value);
+              }}
+              onBlur={(e) => handleBlur(key, e.target.value)}
+              className="w-32 px-3 py-2 text-right rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-mono text-sm tabular-nums"
+              placeholder="0.00"
+            />
           </div>
         );
       })}
